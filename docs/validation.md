@@ -216,6 +216,25 @@ plugin별, 전체 설치 smoke가 exit 0이었다.
 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `57bd77932a968a366c833fab84de9f305888e04923f6f4aa58ddd7668e8127f7` |
 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `cf694b47e0473d5e4bd1ba37409b72d2e7e12c6dfbbb900ae3194cb56d798f06` |
 
+## 후속 Node Google reader 정리 검증 (`6755e63`)
+
+Google 다운로드 reader를 조기 중단하거나 범위 읽기를 마칠 때
+`cancel()`이 실패해도 읽기 결과를 덮어쓰지 않는다. 실패하는 취소를
+재현한 회귀 테스트를 포함해 Windows Node 24에서 `npm test` 39개,
+`npm run lint`, `npm run format:check`, `npm run typecheck`가 모두
+exit 0이었다. Linux amd64 `node:24-bookworm-slim`
+(`node@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6`)
+컨테이너에서 깨끗한 소스 복사본에 `npm ci` 후 같은 검사와 39개 테스트를
+실행했고 모두 exit 0이었다. 이어 `npm pack --workspaces`로 세 tarball을
+빌드하고 `node validation/verify_node_artifacts.mjs /out`으로 격리 설치,
+공개 API 및 dependency layer smoke를 실행해 exit 0을 확인했다.
+
+| 산출물 | Linux Node 24 SHA-256 |
+| --- | --- |
+| `pydemia-drivefs-0.1.0.tgz` | `731c4060810b3406458b6fef8d0c68de809578239ceb4723a60ff1269ec1206c` |
+| `pydemia-drivefs-gdrive-0.1.0.tgz` | `9592aece6403494ae2d85699dd178e04ee0af5a9da754e0cce4bb30b00b1c1c9` |
+| `pydemia-drivefs-microsoft-0.1.0.tgz` | `cf694b47e0473d5e4bd1ba37409b72d2e7e12c6dfbbb900ae3194cb56d798f06` |
+
 ## v1.0.0 미통과 gate
 
 실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
