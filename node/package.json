@@ -1,0 +1,21 @@
+{
+  "name": "drivefs-workspace",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @pydemia/drivefs",
+    "test": "npm run build && node --test tests/test-conformance.mjs",
+    "typecheck": "npm run typecheck --workspace @pydemia/drivefs",
+    "lint": "eslint packages/core/src tests eslint.config.mjs",
+    "format:check": "prettier --check packages/core/src tests eslint.config.mjs package.json packages/core/package.json packages/core/tsconfig.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.0"
+  }
+}
