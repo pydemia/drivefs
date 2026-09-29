@@ -1,8 +1,8 @@
 export interface ErrorContext {
-  operation?: string;
-  target?: string;
-  provider?: string;
-  retry_after?: number;
+  operation?: string | undefined;
+  target?: string | undefined;
+  provider?: string | undefined;
+  retry_after?: number | undefined;
   item_ids?: readonly string[];
 }
 

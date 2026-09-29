@@ -5,11 +5,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @pydemia/drivefs",
-    "test": "npm run build && node --test tests/test-conformance.mjs",
-    "typecheck": "npm run typecheck --workspace @pydemia/drivefs",
-    "lint": "eslint packages/core/src tests eslint.config.mjs",
-    "format:check": "prettier --check packages/core/src tests eslint.config.mjs package.json packages/core/package.json packages/core/tsconfig.json"
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run build && node --test tests/test-conformance.mjs tests/test-gdrive.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint packages/*/src tests eslint.config.mjs",
+    "format:check": "prettier --check packages/*/src tests eslint.config.mjs package.json packages/*/package.json packages/*/tsconfig.json"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
