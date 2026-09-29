@@ -87,6 +87,7 @@ provider의 조건부 요청으로 시행하고, 버전 불일치를 `ConflictEr
 큰 파일은 `open_reader`나 `read_range`를 사용한다.
 `read_range`의 `offset`과 `length`는 0 이상의 정수다. `length=0`은
 빈 바이트를 반환하고 EOF를 넘는 범위는 가능한 바이트만 반환한다.
+유효하지 않은 숫자 인자는 `InvalidArgumentError`다.
 provider가 전체 응답을 보낸 경우 구현은 범위 응답을 검증하고,
 의도치 않은 전체 파일 적재 없이 처리하거나 오류를 낸다.
 별도 범위 요청들 사이에 remote 파일이 바뀌지 않는 snapshot 보장은
@@ -113,6 +114,8 @@ plugin은 재시도할 fragment만 제한된 크기로 보관하며 stream 전�
 메모리에 적재하지 않는다. 실패 후 성공 여부를 확인할 수 없고 안전한
 재시도 방법도 없으면 `IndeterminateOperationError`를 낸다.
 성공을 가정하거나 동일 이름으로 무조건 다시 생성하지 않는다.
+`overwrite=false`와 `expected_version`을 함께 주면
+`InvalidArgumentError`다.
 
 `mkdir`는 중간 디렉터리를 만들지 않는다. 대상이 이미 있으면
 종류와 관계없이 `AlreadyExistsError`다. `move`의 destination parent도
@@ -155,6 +158,7 @@ Python의 동기 호출을 mount의 비동기 이벤트 루프에서 직접 실�
 | `AlreadyExistsError` | 생성/이동 대상 이름이 이미 있음 |
 | `AmbiguousPathError` | 한 경로에 여러 항목이 대응됨 |
 | `InvalidPathError` | 공통 또는 provider 이름 규칙 위반 |
+| `InvalidArgumentError` | 유효하지 않은 옵션 조합 또는 숫자 인자 |
 | `InvalidUploadSourceError` | 크기 누락·불일치 등 업로드 입력 오류 |
 | `NotDirectoryError`, `IsDirectoryError` | 기대한 항목 종류가 다름 |
 | `DirectoryNotEmptyError` | 비어 있지 않은 디렉터리 삭제 시도 |
