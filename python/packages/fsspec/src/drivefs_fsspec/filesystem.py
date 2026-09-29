@@ -6,6 +6,7 @@ from io import BufferedReader, RawIOBase
 from typing import Any, BinaryIO
 
 from drivefs import (
+    ConflictError,
     FileStorage,
     NotFoundError,
     StorageEntry,
@@ -18,11 +19,14 @@ from fsspec.spec import AbstractFileSystem  # type: ignore[import-untyped]
 class _RangeReader(RawIOBase):
     """Seekable reader that requests only the selected byte ranges."""
 
-    def __init__(self, storage: FileStorage, path: str, size: int | None) -> None:
+    def __init__(
+        self, storage: FileStorage, path: str, size: int | None, version: str | None
+    ) -> None:
         super().__init__()
         self._storage = storage
         self._path = path
         self._size = size
+        self._version = version
         self._position = 0
 
     def readable(self) -> bool:
@@ -63,6 +67,10 @@ class _RangeReader(RawIOBase):
         count = len(view)
         if self._size is not None:
             count = min(count, self._size - self._position)
+        if self._version is not None:
+            current = self._storage.stat(self._path).version
+            if current is not None and current != self._version:
+                raise ConflictError("file changed during range reads")
         data = self._storage.read_range(self._path, self._position, count)
         if len(data) > count:
             raise ValueError("storage returned more bytes than requested")
@@ -144,7 +152,8 @@ class DriveFSFileSystem(AbstractFileSystem):  # type: ignore[misc]
         if buffer_size <= 0:
             raise ValueError("block_size must be positive")
         return BufferedReader(
-            _RangeReader(self.storage, normalized, entry.size), buffer_size
+            _RangeReader(self.storage, normalized, entry.size, entry.version),
+            buffer_size,
         )
 
     @staticmethod

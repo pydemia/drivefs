@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from drivefs import ProviderUnavailableError, UnsupportedOperationError
+from drivefs import ConflictError, ProviderUnavailableError, UnsupportedOperationError
 from drivefs_fsspec import DriveFSFileSystem
 from fake_storage import FakeStorage
 
@@ -37,6 +37,16 @@ class FsspecAdapterTest(unittest.TestCase):
             self.assertEqual(reader.read(), b"ij")
         with self.fs.open("/reports/data.bin", "rb") as reader:
             self.assertEqual(reader.read(), b"abcdefghij")
+        with self.fs.open("/reports/data.bin", "rt", encoding="utf-8") as reader:
+            self.assertEqual(reader.read(), "abcdefghij")
+
+    def test_range_seek_detects_visible_version_change(self) -> None:
+        with self.fs.open("/reports/data.bin", "rb", block_size=2) as reader:
+            self.assertEqual(reader.read(2), b"ab")
+            self.storage.write("/reports/data.bin", b"klmnopqrst", overwrite=True)
+            reader.seek(6)
+            with self.assertRaises(ConflictError):
+                reader.read(2)
 
     def test_mutation_is_explicitly_rejected(self) -> None:
         with self.assertRaises(UnsupportedOperationError):
