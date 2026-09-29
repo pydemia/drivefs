@@ -253,12 +253,30 @@ class GoogleDriveStorage(FileStorage):
             raise error
 
     @staticmethod
-    def _json_object(response: httpx.Response) -> dict[str, Any]:
+    def _json_object(
+        response: httpx.Response, *, mutation: bool = False
+    ) -> dict[str, Any]:
         try:
             payload = response.json()
         except ValueError:
+            if mutation:
+                raise IndeterminateOperationError(
+                    "Google mutation response was not JSON", provider="gdrive"
+                ) from None
             raise ProviderError("Google response was not JSON") from None
+        except (httpx.RequestError, httpx.StreamError):
+            if mutation:
+                raise IndeterminateOperationError(
+                    "Google mutation response failed", provider="gdrive"
+                ) from None
+            raise ProviderUnavailableError(
+                "Google response body failed", provider="gdrive"
+            ) from None
         if not isinstance(payload, dict):
+            if mutation:
+                raise IndeterminateOperationError(
+                    "Google mutation response had an invalid shape", provider="gdrive"
+                )
             raise ProviderError("Google response had an invalid shape")
         return payload
 
@@ -441,6 +459,14 @@ class GoogleDriveStorage(FileStorage):
             version=str(version_value) if version_value is not None else None,
         )
 
+    def _mutation_entry(self, item: dict[str, Any], path: str) -> StorageEntry:
+        try:
+            return self._entry(item, path)
+        except ProviderError:
+            raise IndeterminateOperationError(
+                "Google mutation response metadata was invalid", provider="gdrive"
+            ) from None
+
     def stat(self, target: StorageTarget) -> StorageEntry:
         item, path = self._resolve(target)
         return self._entry(item, path)
@@ -535,7 +561,9 @@ class GoogleDriveStorage(FileStorage):
             expected=(200, 201),
             mutation=True,
         )
-        return self._entry(self._json_object(response), normalize_path(path))
+        return self._mutation_entry(
+            self._json_object(response, mutation=True), normalize_path(path)
+        )
 
     def move(self, target: StorageTarget, destination: str) -> StorageEntry:
         item, old_path = self._resolve(target)
@@ -572,7 +600,9 @@ class GoogleDriveStorage(FileStorage):
             json={"name": name},
             mutation=True,
         )
-        return self._entry(self._json_object(response), normalize_path(destination))
+        return self._mutation_entry(
+            self._json_object(response, mutation=True), normalize_path(destination)
+        )
 
     def delete(self, target: StorageTarget) -> None:
         item, path = self._resolve(target)
@@ -659,7 +689,7 @@ class GoogleDriveStorage(FileStorage):
                     expected=(200,),
                     mutation=True,
                 )
-            result = self._json_object(response)
+            result = self._json_object(response, mutation=True)
         else:
             upload_url = (
                 f"{UPLOAD_URL}/{_quote_id(str(existing['id']))}"
@@ -694,7 +724,7 @@ class GoogleDriveStorage(FileStorage):
                 self._cancel_upload(session)
                 raise
         normalized = normalize_path(path)
-        entry = self._entry(result, normalized)
+        entry = self._mutation_entry(result, normalized)
         if existing is None:
             matches = list(self._pages(str(parent["id"]), name))
             if len(matches) > 1:
@@ -779,7 +809,7 @@ class GoogleDriveStorage(FileStorage):
                 "Google upload status is unavailable"
             ) from None
         if response.status_code in (200, 201):
-            return total, self._json_object(response)
+            return total, self._json_object(response, mutation=True)
         if response.status_code == 308:
             return self._acknowledged(response), None
         if response.status_code == 404:
@@ -835,7 +865,7 @@ class GoogleDriveStorage(FileStorage):
                 response = None
             if response is not None:
                 if response.status_code in (200, 201):
-                    return total, self._json_object(response)
+                    return total, self._json_object(response, mutation=True)
                 if response.status_code == 308:
                     acknowledged = self._acknowledged(response)
                     if acknowledged == end:

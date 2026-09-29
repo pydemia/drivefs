@@ -619,9 +619,12 @@ test("Graph request deadline bounds a stalled transport", async () => {
 test("Graph body failures distinguish reads from uncertain writes", async () => {
   const { api, store } = make("personal");
   let failRead = true;
+  let emptyMetadata = false;
   const fetcher = async (url, init) => {
     const response = await api.fetch(url, init);
-    if (
+    if (emptyMetadata && init.method === "POST") {
+      response.json = async () => ({});
+    } else if (
       (failRead && init.method === "GET") ||
       (!failRead && init.method === "POST")
     ) {
@@ -645,4 +648,9 @@ test("Graph body failures distinguish reads from uncertain writes", async () => 
   await assert.rejects(storage.stat("/"), ProviderUnavailableError);
   failRead = false;
   await assert.rejects(storage.mkdir("/late"), IndeterminateOperationError);
+  emptyMetadata = true;
+  await assert.rejects(
+    storage.mkdir("/empty-metadata"),
+    IndeterminateOperationError,
+  );
 });

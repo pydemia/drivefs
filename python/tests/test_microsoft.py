@@ -489,6 +489,34 @@ class MicrosoftStorageTest(unittest.TestCase):
         finally:
             client.close()
 
+    def test_mutation_response_body_failure_is_indeterminate(self) -> None:
+        api = GraphApiFixture(drive_type="personal")
+        corrupt_body = b"{"
+        corrupt_read = False
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if corrupt_read and request.method == "GET":
+                return httpx.Response(200, content=b"{")
+            response = api(request)
+            if request.method == "POST" and request.url.path.endswith("/children"):
+                return httpx.Response(response.status_code, content=corrupt_body)
+            return response
+
+        store = MemoryCredentialStore(GraphToken("test-token"))
+        auth = GraphAuth(tenant_id="consumers", client_id="client", store=store)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            storage = OneDriveStorage(
+                drive_id="drive", root_id="root", auth=auth, client=client
+            )
+            for index, body in enumerate((b"{", b"[]", b"{}")):
+                corrupt_body = body
+                with self.subTest(body=body):
+                    with self.assertRaises(IndeterminateOperationError):
+                        storage.mkdir(f"/created-{index}")
+            corrupt_read = True
+            with self.assertRaises(ProviderError):
+                storage.stat("/")
+
     def test_concurrent_unauthorized_requests_refresh_once(self) -> None:
         barrier = Barrier(2)
         refresh_count = 0

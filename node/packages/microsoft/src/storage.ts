@@ -606,6 +606,18 @@ class GraphStorage extends FileStorage {
     };
   }
 
+  #mutationEntry(item: Metadata, path: string): StorageEntry {
+    try {
+      return this.#entry(item, path);
+    } catch (error) {
+      if (!(error instanceof ProviderError)) throw error;
+      throw new IndeterminateOperationError(
+        "Graph mutation response metadata was invalid",
+        { provider: "microsoft" },
+      );
+    }
+  }
+
   async stat(target: StorageTarget): Promise<StorageEntry> {
     const [item, path] = await this.#resolve(target);
     return this.#entry(item, path);
@@ -771,7 +783,7 @@ class GraphStorage extends FileStorage {
         mutation: true,
       },
     );
-    return this.#entry(
+    return this.#mutationEntry(
       await this.#jsonObject(response, true),
       normalize_path(path),
     );
@@ -817,7 +829,7 @@ class GraphStorage extends FileStorage {
         mutation: true,
       },
     );
-    return this.#entry(
+    return this.#mutationEntry(
       await this.#jsonObject(response, true),
       normalize_path(destination),
     );
@@ -947,7 +959,7 @@ class GraphStorage extends FileStorage {
       }
     }
     const normalized = normalize_path(path);
-    const entry = this.#entry(result, normalized);
+    const entry = this.#mutationEntry(result, normalized);
     if (!existing) {
       const ids: string[] = [];
       for await (const item of this.#pages(String(parent.id))) {

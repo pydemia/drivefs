@@ -558,6 +558,18 @@ export class GoogleDriveStorage extends FileStorage {
     };
   }
 
+  #mutationEntry(item: Metadata, path: string): StorageEntry {
+    try {
+      return this.#entry(item, path);
+    } catch (error) {
+      if (!(error instanceof ProviderError)) throw error;
+      throw new IndeterminateOperationError(
+        "Google mutation response metadata was invalid",
+        { provider: "gdrive" },
+      );
+    }
+  }
+
   async stat(target: StorageTarget): Promise<StorageEntry> {
     const [item, path] = await this.#resolve(target);
     return this.#entry(item, path);
@@ -707,7 +719,7 @@ export class GoogleDriveStorage extends FileStorage {
       expected: [200, 201],
       mutation: true,
     });
-    return this.#entry(
+    return this.#mutationEntry(
       await this.#jsonObject(response, true),
       normalize_path(path),
     );
@@ -762,7 +774,7 @@ export class GoogleDriveStorage extends FileStorage {
         mutation: true,
       },
     );
-    return this.#entry(
+    return this.#mutationEntry(
       await this.#jsonObject(response, true),
       normalize_path(destination),
     );
@@ -928,7 +940,7 @@ export class GoogleDriveStorage extends FileStorage {
       }
     }
     const normalized = normalize_path(path);
-    const entry = this.#entry(result, normalized);
+    const entry = this.#mutationEntry(result, normalized);
     if (!existing) {
       const ids: string[] = [];
       for await (const item of this.#pages(String(parent.id), name)) {

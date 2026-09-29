@@ -236,12 +236,30 @@ class _GraphStorage(FileStorage):
             raise error
 
     @staticmethod
-    def _json_object(response: httpx.Response) -> dict[str, Any]:
+    def _json_object(
+        response: httpx.Response, *, mutation: bool = False
+    ) -> dict[str, Any]:
         try:
             payload = response.json()
         except ValueError:
+            if mutation:
+                raise IndeterminateOperationError(
+                    "Graph mutation response was not JSON", provider="microsoft"
+                ) from None
             raise ProviderError("Graph response was not JSON") from None
+        except (httpx.RequestError, httpx.StreamError):
+            if mutation:
+                raise IndeterminateOperationError(
+                    "Graph mutation response failed", provider="microsoft"
+                ) from None
+            raise ProviderUnavailableError(
+                "Graph response body failed", provider="microsoft"
+            ) from None
         if not isinstance(payload, dict):
+            if mutation:
+                raise IndeterminateOperationError(
+                    "Graph mutation response had an invalid shape", provider="microsoft"
+                )
             raise ProviderError("Graph response had an invalid shape")
         return payload
 
@@ -469,6 +487,14 @@ class _GraphStorage(FileStorage):
             version=version if isinstance(version, str) else None,
         )
 
+    def _mutation_entry(self, item: dict[str, Any], path: str) -> StorageEntry:
+        try:
+            return self._entry(item, path)
+        except ProviderError:
+            raise IndeterminateOperationError(
+                "Graph mutation response metadata was invalid", provider="microsoft"
+            ) from None
+
     def stat(self, target: StorageTarget) -> StorageEntry:
         item, path = self._resolve(target)
         return self._entry(item, path)
@@ -578,7 +604,9 @@ class _GraphStorage(FileStorage):
             expected=(201,),
             mutation=True,
         )
-        return self._entry(self._json_object(response), normalize_path(path))
+        return self._mutation_entry(
+            self._json_object(response, mutation=True), normalize_path(path)
+        )
 
     def move(self, target: StorageTarget, destination: str) -> StorageEntry:
         item, old_path = self._resolve(target)
@@ -607,7 +635,9 @@ class _GraphStorage(FileStorage):
             json={"name": name, "parentReference": {"id": parent["id"]}},
             mutation=True,
         )
-        return self._entry(self._json_object(response), normalize_path(destination))
+        return self._mutation_entry(
+            self._json_object(response, mutation=True), normalize_path(destination)
+        )
 
     def delete(self, target: StorageTarget) -> None:
         item, path = self._resolve(target)
@@ -681,7 +711,7 @@ class _GraphStorage(FileStorage):
                 expected=(200, 201),
                 mutation=True,
             )
-            result = self._json_object(response)
+            result = self._json_object(response, mutation=True)
         else:
             endpoint = (
                 self._item_url(str(existing["id"])) + "/createUploadSession"
@@ -705,7 +735,7 @@ class _GraphStorage(FileStorage):
                 json={"item": upload_item},
                 mutation=True,
             )
-            payload = self._json_object(response)
+            payload = self._json_object(response, mutation=True)
             session = payload.get("uploadUrl")
             parsed = urlparse(session if isinstance(session, str) else "")
             if parsed.scheme != "https" or not parsed.hostname:
@@ -722,7 +752,7 @@ class _GraphStorage(FileStorage):
                 self._cancel_upload(session)
                 raise
         normalized = normalize_path(path)
-        entry = self._entry(result, normalized)
+        entry = self._mutation_entry(result, normalized)
         if existing is None:
             matches = [
                 item
@@ -799,7 +829,7 @@ class _GraphStorage(FileStorage):
             )
         if response.status_code != 200:
             raise self._error(response, "write", None, mutation=True)
-        payload = self._json_object(response)
+        payload = self._json_object(response, mutation=True)
         if isinstance(payload.get("file"), dict):
             return None, payload
         return self._next_offset(payload), None
@@ -854,9 +884,11 @@ class _GraphStorage(FileStorage):
                 response = None
             if response is not None:
                 if response.status_code in (200, 201):
-                    return end, self._json_object(response)
+                    return end, self._json_object(response, mutation=True)
                 if response.status_code == 202:
-                    next_offset = self._next_offset(self._json_object(response))
+                    next_offset = self._next_offset(
+                        self._json_object(response, mutation=True)
+                    )
                     if next_offset == end:
                         return next_offset, None
                     if next_offset != start:

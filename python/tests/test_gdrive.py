@@ -416,6 +416,29 @@ class GoogleDriveStorageTest(unittest.TestCase):
             bad_auth.access_token(self.client)
         self.assertNotIn("secret", str(caught.exception))
 
+    def test_mutation_response_body_failure_is_indeterminate(self) -> None:
+        corrupt_body = b"{"
+        corrupt_read = False
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if corrupt_read and request.method == "GET":
+                return httpx.Response(200, content=b"{")
+            response = self.api(request)
+            if request.method == "POST" and request.url.path == "/drive/v3/files":
+                return httpx.Response(response.status_code, content=corrupt_body)
+            return response
+
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            storage = GoogleDriveStorage(root_id="root", auth=self.auth, client=client)
+            for index, body in enumerate((b"{", b"[]", b"{}")):
+                corrupt_body = body
+                with self.subTest(body=body):
+                    with self.assertRaises(IndeterminateOperationError):
+                        storage.mkdir(f"/created-{index}")
+            corrupt_read = True
+            with self.assertRaises(ProviderError):
+                storage.stat("/")
+
     def test_unauthorized_response_refreshes_once(self) -> None:
         store = MemoryCredentialStore(GoogleToken("test-token", "refresh-token"))
         auth = GoogleAuth(store=store, client_id="client", client_secret="secret")
