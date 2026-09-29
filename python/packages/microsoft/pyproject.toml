@@ -7,6 +7,8 @@ name = "drivefs-microsoft"
 version = "0.1.0"
 description = "Microsoft Graph drive backends for drivefs"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = ["drivefs>=0.1,<1", "httpx>=0.28,<1"]
 

@@ -261,6 +261,17 @@ exit 0이었다. 이번 변경은 conformance 입력과 테스트 실행기에�
 이는 공개 package metadata가 현재 없다는 증거일 뿐, 이름 예약
 가능성이나 해당 계정의 게시 권한을 증명하지 않는다.
 
+## Apache-2.0 배포 패키지 검증 (2026-09-30)
+
+[의존성 라이선스 검토](license-review.md)를 마친 뒤 Windows Python 3.12에서
+네 wheel을 다시 빌드했다. 각각 `License-Expression: Apache-2.0` 메타데이터와
+`dist-info/licenses/LICENSE`를 포함했다. 네 개를 선택 provider별 격리
+환경 및 전체 환경에 설치해 `pip check`와 API smoke가 exit 0이었다.
+Node 24에서는 세 workspace tarball을 다시 빌드해 각각 `LICENSE`가
+포함됨을 확인했고, 선택 provider별 격리 설치 및 전체 설치 smoke가
+exit 0이었다. Python unittest 24개, Node 테스트 40개와 Node lint,
+format, typecheck가 통과했다. 실제 계정 검증은 아직 실행하지 않았다.
+
 ## v1.0.0 미통과 gate
 
 실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
@@ -274,7 +285,7 @@ credential 없이 실행하면 쓰기 전에 종료된다. 아직 어떤 실제 
 | --- | --- |
 | Google·OneDrive Personal·SharePoint 실제 계정 × Python·Node lifecycle 및 refresh | 계정·credential이 없어 실행하지 못함. fixture 통과는 대체 증거가 아님 |
 | Google 실제 계정 중복 이름·native 문서, provider별 권한·휴지통·대용량 응답 | 실행하지 못함 |
-| registry 이름·npm scope 게시 권한, LICENSE, 최종 1.0 metadata | 위 공개 metadata 조회는 404. 게시 권한·이름 예약 가능성, LICENSE·1.0 metadata는 미확정 |
+| registry 이름·npm scope 게시 권한, 최종 1.0 metadata | 위 공개 metadata 조회는 404. Apache-2.0 LICENSE 및 package metadata는 확인했으나, 게시 권한·이름 예약 가능성·1.0 metadata는 미확정 |
 | 원자적 조건부 교체 | 모든 provider가 capability=false; 1.0 필수 기능은 아니나 지원 주장 불가 |
 
 따라서 이 기록은 구현 후보의 컨테이너 검증 증거이며 v1.0.0 배포

@@ -2,6 +2,7 @@
   "name": "@pydemia/drivefs-microsoft",
   "version": "0.1.0",
   "description": "Microsoft Graph drive backends for drivefs",
+  "license": "Apache-2.0",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -19,7 +20,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -7,6 +7,8 @@ name = "drivefs-fsspec"
 version = "0.1.0"
 description = "Read-only fsspec adapter for drivefs"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = ["drivefs>=0.1,<1", "fsspec>=2024.12,<2027"]
 

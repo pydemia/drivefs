@@ -2,6 +2,7 @@
   "name": "@pydemia/drivefs",
   "version": "0.1.0",
   "description": "Provider-independent file storage API",
+  "license": "Apache-2.0",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -16,7 +17,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

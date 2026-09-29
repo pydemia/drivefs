@@ -1,5 +1,8 @@
 # drivefs
 
+라이선스: [Apache-2.0](LICENSE). 배포 의존성의 라이선스 검토는
+[라이선스 검토](docs/license-review.md)에 기록했습니다.
+
 Google Drive, OneDrive Personal, SharePoint document library를 애플리케이션의
 파일 저장소로 사용하는 Python·Node.js 라이브러리입니다. 한 root 아래의
 바이너리 파일과 디렉터리를 같은 `FileStorage` 연산으로 다룹니다.
