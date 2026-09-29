@@ -126,6 +126,34 @@ TypeScript 및 37개 test가 각각 exit 0이었다. 새 tarball을 각 환경�
 | Windows Node 24 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `dcd12839e0a9e6b3597587e3bed59162c13e14709f6ce952cf87c3ce0e6d63a1` |
 | Windows Node 24 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `7dbe5f99483e7e3b98f4999f362f2c9e7c13af2fda4bdf1505c01077d6c42469` |
 
+## 후속 Python 동시 refresh 검증
+
+두 Python provider에서 여러 401 응답이 같은 실패 토큰에 대해 도착하면
+이미 저장된 새 access token을 재사용하도록 수정했다. Linux 컨테이너
+Python 3.12·3.13·3.14와 Windows Python 3.12에서 Ruff·mypy strict 및
+22개 test가 각각 exit 0이었다. 각 환경에서 wheel 네 개를 다시 빌드해
+core·plugin별·전체 설치 smoke도 exit 0을 확인했다. 후속 산출물의
+SHA-256은 다음과 같다.
+
+| 환경 | 파일 | SHA-256 |
+| --- | --- | --- |
+| Linux Python 3.12 | `drivefs-0.1.0-py3-none-any.whl` | `5ad73b9621b4319e046189081362e7dfcfcab3effdffb9cd52544c904e9536c0` |
+| Linux Python 3.12 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `b129636ccff86cafac12160ac4c604259f157060543080764f84fb38e6fe76f2` |
+| Linux Python 3.12 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `dc816cad8e2d9e258578a9186bdc32902a8a5bebae079c46a0494053e3b91d66` |
+| Linux Python 3.12 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `9e2f36d5631730f96eee86c454fee9f6e8d74535f9439917ca707ea4bad22e6c` |
+| Linux Python 3.13 | `drivefs-0.1.0-py3-none-any.whl` | `8d5ced364abe5d1e671a27151100bde4ebaa90bd55853a3606c2e69bc76af6b7` |
+| Linux Python 3.13 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `1e8b0a49f42d09db3bd48dd19801778f80bbac1aed34c966aedae55265e7fcf1` |
+| Linux Python 3.13 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `ff25f286b70ee0e10f63c29346674dba705599b8546b3eb9184949ae363bc361` |
+| Linux Python 3.13 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `49b08abcd74350cb554a908efbaa29666f29963b8f4e61be6ce34c9003e81904` |
+| Linux Python 3.14 | `drivefs-0.1.0-py3-none-any.whl` | `e12077b58beee371b56d37f9312da36742833b8acef5be4bddad97c36e4ce50a` |
+| Linux Python 3.14 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `20b8a618ef2e8db26e48f773fc125d36bddece8546df963fe651f102f9111492` |
+| Linux Python 3.14 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `5acf2537bc712b66be99722bc689f9a482b399ecd408780802856e24d9557ad9` |
+| Linux Python 3.14 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `9e76990fd262e8de95ab5f102cbe4ed92b7e3b402bab6f63a9de27934b83224b` |
+| Windows Python 3.12 | `drivefs-0.1.0-py3-none-any.whl` | `a8d93528e41d54b89ff8485f19031790742c38a6412dc7cdaeb0cf25cbbf7c77` |
+| Windows Python 3.12 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `b1c22973e18b96a1a13e6bba39531e4ebbf0732e6e6a5ad87db5895642ff1705` |
+| Windows Python 3.12 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `f945bbb8a708321bdec8e856cc5b3fbae5f0f174893ca7813254bf07c9fc08a2` |
+| Windows Python 3.12 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `6997e67c0c475da747abee98f45ccf9f4556f7347ba534c8179f487df29b7e61` |
+
 ## v1.0.0 미통과 gate
 
 | gate | 현재 증거 |

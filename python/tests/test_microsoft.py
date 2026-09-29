@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import re
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
+from threading import Barrier
 from typing import Any
 
 import httpx
@@ -486,3 +488,37 @@ class MicrosoftStorageTest(unittest.TestCase):
                 storage.write("/unknown", b"data")
         finally:
             client.close()
+
+    def test_concurrent_unauthorized_requests_refresh_once(self) -> None:
+        barrier = Barrier(2)
+        refresh_count = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal refresh_count
+            if request.url.host == "login.microsoftonline.com":
+                refresh_count += 1
+                return httpx.Response(200, json={"access_token": "new-token"})
+            if request.url.path == "/v1.0/drives/drive":
+                if request.headers["Authorization"] == "Bearer test-token":
+                    barrier.wait(timeout=5)
+                    return httpx.Response(401)
+                self.assertEqual(request.headers["Authorization"], "Bearer new-token")
+                return httpx.Response(200, json={"driveType": "personal"})
+            self.assertEqual(request.url.path, "/v1.0/drives/drive/items/root")
+            return httpx.Response(
+                200,
+                json={"id": "root", "name": "root", "folder": {}},
+            )
+
+        store = MemoryCredentialStore(GraphToken("test-token", "refresh-token"))
+        auth = GraphAuth(tenant_id="consumers", client_id="client", store=store)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            storage = OneDriveStorage(
+                drive_id="drive", root_id="root", auth=auth, client=client
+            )
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                kinds = list(
+                    executor.map(lambda _index: storage.stat("/").kind, range(2))
+                )
+        self.assertEqual(kinds, ["directory", "directory"])
+        self.assertEqual(refresh_count, 1)

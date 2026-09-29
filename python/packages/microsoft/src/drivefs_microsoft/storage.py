@@ -216,7 +216,9 @@ class _GraphStorage(FileStorage):
                 return response
             if response.status_code == 401 and not refreshed:
                 response.close()
-                self._auth.access_token(self._client, force_refresh=True)
+                self._auth.access_token(
+                    self._client, force_refresh=True, failed_token=token
+                )
                 refreshed = True
                 continue
             if (

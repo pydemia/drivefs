@@ -56,7 +56,13 @@ class GoogleAuth:
         self._client_secret = client_secret
         self._lock = Lock()
 
-    def access_token(self, client: httpx.Client, *, force_refresh: bool = False) -> str:
+    def access_token(
+        self,
+        client: httpx.Client,
+        *,
+        force_refresh: bool = False,
+        failed_token: str | None = None,
+    ) -> str:
         with self._lock:
             try:
                 token = self._store.load()
@@ -64,6 +70,8 @@ class GoogleAuth:
                 raise AuthenticationError("credential load failed") from None
             if token is None or not token.access_token:
                 raise AuthenticationError("no Google access token is available")
+            if force_refresh and failed_token and token.access_token != failed_token:
+                return token.access_token
             if not force_refresh and not self._expires_soon(token):
                 return token.access_token
             if not (token.refresh_token and self._client_id and self._client_secret):

@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import re
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
+from threading import Barrier
 from typing import Any
 
 import httpx
@@ -421,6 +423,42 @@ class GoogleDriveStorageTest(unittest.TestCase):
         self.api.forced_status = 401
         self.assertEqual(storage.stat("/").path, "/")
         self.assertEqual(self.api.refresh_count, 1)
+
+    def test_concurrent_unauthorized_requests_refresh_once(self) -> None:
+        barrier = Barrier(2)
+        refresh_count = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal refresh_count
+            if request.url.host == "oauth2.googleapis.com":
+                refresh_count += 1
+                return httpx.Response(200, json={"access_token": "new-token"})
+            self.assertEqual(request.url.path, "/drive/v3/files/root")
+            if request.headers["Authorization"] == "Bearer test-token":
+                barrier.wait(timeout=5)
+                return httpx.Response(401)
+            self.assertEqual(request.headers["Authorization"], "Bearer new-token")
+            return httpx.Response(
+                200,
+                json={
+                    "id": "root",
+                    "name": "root",
+                    "mimeType": FOLDER_MIME,
+                    "parents": ["my-drive"],
+                    "trashed": False,
+                },
+            )
+
+        store = MemoryCredentialStore(GoogleToken("test-token", "refresh-token"))
+        auth = GoogleAuth(store=store, client_id="client", client_secret="secret")
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            storage = GoogleDriveStorage(root_id="root", auth=auth, client=client)
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                kinds = list(
+                    executor.map(lambda _index: storage.stat("/").kind, range(2))
+                )
+        self.assertEqual(kinds, ["directory", "directory"])
+        self.assertEqual(refresh_count, 1)
 
 
 if __name__ == "__main__":
