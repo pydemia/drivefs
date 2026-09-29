@@ -663,31 +663,22 @@ class _GraphStorage(FileStorage):
             self._require_file(existing)
         if total == 0:
             self._check_stream_end(data)
-            if existing is None:
-                response = self._request(
-                    "POST",
-                    self._item_url(str(parent["id"])) + "/children",
-                    operation="write",
-                    target=path,
-                    json={
-                        "name": name,
-                        "file": {},
-                        "@microsoft.graph.conflictBehavior": "fail",
-                    },
-                    expected=(201,),
-                    mutation=True,
-                )
-            else:
-                response = self._request(
-                    "PUT",
-                    self._item_url(str(existing["id"])) + "/content",
-                    operation="write",
-                    target=path,
-                    content=b"",
-                    headers={"Content-Type": "application/octet-stream"},
-                    expected=(200, 201),
-                    mutation=True,
-                )
+            endpoint = (
+                self._item_url(str(existing["id"])) + "/content"
+                if existing is not None
+                else self._item_url(str(parent["id"]))
+                + f":/{quote(name, safe='')}:/content"
+            )
+            response = self._request(
+                "PUT",
+                endpoint,
+                operation="write",
+                target=path,
+                content=b"",
+                headers={"Content-Type": "application/octet-stream"},
+                expected=(200, 201),
+                mutation=True,
+            )
             result = self._json_object(response)
         else:
             endpoint = (

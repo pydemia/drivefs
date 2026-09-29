@@ -176,8 +176,26 @@ class GraphApiFixture {
         });
       }
       if (method === "PUT") {
-        const item = this.items.get(id);
         const data = new Uint8Array(init.body ?? new Uint8Array());
+        if (id.includes(":/")) {
+          const [parentId, rawName] = id.split(":/");
+          const name = rawName.replace(/:$/, "");
+          if (
+            [...this.items.values()].some(
+              (item) =>
+                item.id !== "root" &&
+                item.name === name &&
+                item.parentReference.id === parentId,
+            )
+          ) {
+            return new Response(null, { status: 409 });
+          }
+          return jsonResponse(
+            201,
+            this.inject(name, { parent: parentId, data }),
+          );
+        }
+        const item = this.items.get(id);
         this.content.set(id, data);
         item.size = data.length;
         item.eTag = '"v2"';
@@ -445,6 +463,8 @@ test("Graph error mapping, retry and refresh", async () => {
   await assert.rejects(storage.stat("/"), QuotaExceededError);
   api.forcedStatus = 409;
   await assert.rejects(storage.stat("/"), ConflictError);
+  api.forcedStatus = 412;
+  await assert.rejects(storage.stat("/"), ConflictError);
   api.forcedException = true;
   await assert.rejects(storage.stat("/"), ProviderUnavailableError);
   api.forcedStatus = 401;
@@ -515,4 +535,26 @@ test("Graph rejects a mismatched drive and SharePoint root", async () => {
   const sharepoint = make("sharepoint");
   sharepoint.api.items.get("root").sharepointIds.siteId = "another-site";
   await assert.rejects(sharepoint.storage.stat("/"), NotFoundError);
+});
+
+test("Graph refresh is serialized across simultaneous requests", async () => {
+  const { api, store } = make("personal");
+  store.save({
+    access_token: "test-token",
+    refresh_token: "refresh-token",
+    expires_at: Date.now() - 60_000,
+  });
+  const auth = new GraphAuth({
+    tenant_id: "consumers",
+    client_id: "client",
+    store,
+  });
+  const fetcher = api.fetch.bind(api);
+  const [first, second] = await Promise.all([
+    auth.access_token(fetcher),
+    auth.access_token(fetcher),
+  ]);
+  assert.equal(first, "new-token");
+  assert.equal(second, "new-token");
+  assert.equal(api.refreshCount, 1);
 });

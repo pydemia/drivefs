@@ -13,6 +13,7 @@ import httpx
 from drivefs import (
     AmbiguousPathError,
     AuthenticationError,
+    ConflictError,
     DirectoryNotEmptyError,
     IndeterminateOperationError,
     InvalidUploadSourceError,
@@ -20,6 +21,7 @@ from drivefs import (
     PermissionDeniedError,
     ProviderError,
     ProviderUnavailableError,
+    QuotaExceededError,
     UnsupportedOperationError,
 )
 from drivefs_microsoft import (
@@ -160,6 +162,20 @@ class GraphApiFixture:
                     headers={"Location": f"https://download.example/{item_id}"},
                 )
             if request.method == "PUT":
+                if ":/" in item_id:
+                    parent_id, name = item_id.split(":/", 1)
+                    name = name.removesuffix(":")
+                    if any(
+                        item["name"] == name
+                        and item["parentReference"]["id"] == parent_id
+                        for item in self.items.values()
+                        if item is not self.items["root"]
+                    ):
+                        return httpx.Response(409)
+                    return httpx.Response(
+                        201,
+                        json=self.inject(name, parent=parent_id, data=request.content),
+                    )
                 item = self.items[item_id]
                 self.content[item_id] = request.content
                 item["size"] = len(request.content)
@@ -414,9 +430,20 @@ class MicrosoftStorageTest(unittest.TestCase):
             self.assertEqual(storage.stat("/").kind, "directory")
             api.forced_status = 503
             self.assertEqual(storage.stat("/").kind, "directory")
+            api.forced_status = 507
+            with self.assertRaises(QuotaExceededError):
+                storage.stat("/")
+            for status in (409, 412):
+                api.forced_status = status
+                with self.assertRaises(ConflictError):
+                    storage.stat("/")
             api.forced_exception = True
             with self.assertRaises(ProviderUnavailableError):
                 storage.stat("/")
+            store.save(GraphToken("test-token", "refresh-token"))
+            api.forced_status = 401
+            self.assertEqual(storage.stat("/").kind, "directory")
+            self.assertEqual(api.refresh_count, 1)
             expired = GraphToken(
                 "test-token",
                 "refresh-token",
@@ -431,7 +458,7 @@ class MicrosoftStorageTest(unittest.TestCase):
                 client=client,
             )
             self.assertEqual(refreshed.stat("/").kind, "directory")
-            self.assertEqual(api.refresh_count, 1)
+            self.assertEqual(api.refresh_count, 2)
 
             class FailingStore(MemoryCredentialStore):
                 def save(self, token: GraphToken) -> None:

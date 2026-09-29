@@ -852,34 +852,17 @@ class GraphStorage extends FileStorage {
     let result: Metadata;
     if (total === 0) {
       await source.ensureEnd();
-      const response = existing
-        ? await this.#request(
-            "PUT",
-            `${this.#itemUrl(String(existing.id))}/content`,
-            {
-              operation: "write",
-              target: path,
-              body: new Uint8Array(),
-              headers: { "Content-Type": "application/octet-stream" },
-              expected: [200, 201],
-              mutation: true,
-            },
-          )
-        : await this.#request(
-            "POST",
-            `${this.#itemUrl(String(parent.id))}/children`,
-            {
-              operation: "write",
-              target: path,
-              json: {
-                name,
-                file: {},
-                "@microsoft.graph.conflictBehavior": "fail",
-              },
-              expected: [201],
-              mutation: true,
-            },
-          );
+      const endpoint = existing
+        ? `${this.#itemUrl(String(existing.id))}/content`
+        : `${this.#itemUrl(String(parent.id))}:/${encodeURIComponent(name)}:/content`;
+      const response = await this.#request("PUT", endpoint, {
+        operation: "write",
+        target: path,
+        body: new Uint8Array(),
+        headers: { "Content-Type": "application/octet-stream" },
+        expected: [200, 201],
+        mutation: true,
+      });
       result = await this.#jsonObject(response);
     } else {
       const endpoint = existing
