@@ -16,7 +16,11 @@ const auth = new GraphAuth({
   client_id: process.env.MS_CLIENT_ID,
   store: new MemoryCredentialStore({ access_token: process.env.MS_ACCESS_TOKEN }),
 });
-const storage = new OneDriveStorage({ driveId, rootId, auth });
+const storage = new OneDriveStorage({
+  driveId: "personal-drive-id",
+  rootId: "selected-root-item-id",
+  auth,
+});
 const entry = await storage.stat("/report.csv");
 ```
 
