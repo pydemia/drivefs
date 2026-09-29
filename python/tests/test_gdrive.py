@@ -381,6 +381,10 @@ class GoogleDriveStorageTest(unittest.TestCase):
         self.assertEqual(self.storage.stat("/").kind, "directory")
         self.api.forced_status = 503
         self.assertEqual(self.storage.stat("/").kind, "directory")
+        for status in (409, 412):
+            self.api.forced_status = status
+            with self.assertRaises(ConflictError):
+                self.storage.stat("/")
         self.api.forced_exception = True
         with self.assertRaises(ProviderUnavailableError):
             self.storage.stat("/")

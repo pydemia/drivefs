@@ -435,6 +435,10 @@ test("Google HTTP errors and OAuth refresh", async () => {
   assert.equal((await storage.stat("/")).kind, "directory");
   api.forcedStatus = 503;
   assert.equal((await storage.stat("/")).kind, "directory");
+  for (const status of [409, 412]) {
+    api.forcedStatus = status;
+    await assert.rejects(storage.stat("/"), ConflictError);
+  }
   api.forcedException = true;
   await assert.rejects(storage.stat("/"), ProviderUnavailableError);
   api.failUploadStart = true;
