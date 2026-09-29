@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { clearTimeout, setTimeout } from "node:timers";
 
 import {
   AmbiguousPathError,
@@ -7,6 +8,7 @@ import {
   ConflictError,
   DirectoryNotEmptyError,
   IndeterminateOperationError,
+  InvalidArgumentError,
   InvalidUploadSourceError,
   NotFoundError,
   PermissionDeniedError,
@@ -557,4 +559,90 @@ test("Graph refresh is serialized across simultaneous requests", async () => {
   assert.equal(first, "new-token");
   assert.equal(second, "new-token");
   assert.equal(api.refreshCount, 1);
+});
+
+test("Graph request deadline bounds a stalled transport", async () => {
+  const auth = new GraphAuth({
+    tenant_id: "consumers",
+    client_id: "client",
+    store: new MemoryCredentialStore({ access_token: "test-token" }),
+  });
+  let aborted = false;
+  const fetcher = (_url, init) =>
+    new Promise((resolve, reject) => {
+      assert.ok(init.signal);
+      const timer = setTimeout(
+        () => resolve(new Response(null, { status: 204 })),
+        1_000,
+      );
+      init.signal.addEventListener(
+        "abort",
+        () => {
+          aborted = true;
+          clearTimeout(timer);
+          reject(init.signal.reason);
+        },
+        { once: true },
+      );
+    });
+  const storage = new OneDriveStorage({
+    driveId: "drive",
+    rootId: "root",
+    auth,
+    fetch: fetcher,
+    timeoutMs: 20,
+  });
+  await assert.rejects(storage.stat("/"), ProviderUnavailableError);
+  assert.equal(aborted, true);
+  assert.throws(
+    () =>
+      new OneDriveStorage({
+        driveId: "drive",
+        rootId: "root",
+        auth,
+        timeoutMs: 0,
+      }),
+    InvalidArgumentError,
+  );
+  assert.throws(
+    () =>
+      new OneDriveStorage({
+        driveId: "drive",
+        rootId: "root",
+        auth,
+        timeoutMs: 2_147_483_648,
+      }),
+    InvalidArgumentError,
+  );
+});
+
+test("Graph body failures distinguish reads from uncertain writes", async () => {
+  const { api, store } = make("personal");
+  let failRead = true;
+  const fetcher = async (url, init) => {
+    const response = await api.fetch(url, init);
+    if (
+      (failRead && init.method === "GET") ||
+      (!failRead && init.method === "POST")
+    ) {
+      response.json = async () => {
+        throw Object.assign(new Error("timed out"), { name: "TimeoutError" });
+      };
+    }
+    return response;
+  };
+  const auth = new GraphAuth({
+    tenant_id: "consumers",
+    client_id: "client",
+    store,
+  });
+  const storage = new OneDriveStorage({
+    driveId: "drive",
+    rootId: "root",
+    auth,
+    fetch: fetcher,
+  });
+  await assert.rejects(storage.stat("/"), ProviderUnavailableError);
+  failRead = false;
+  await assert.rejects(storage.mkdir("/late"), IndeterminateOperationError);
 });

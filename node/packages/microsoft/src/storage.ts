@@ -41,11 +41,23 @@ interface GraphStorageOptions {
   rootId: string;
   auth: GraphAuth;
   fetch?: typeof fetch;
+  /** Total deadline for each HTTP request, including its response body. Default: 5 minutes. */
+  timeoutMs?: number;
 }
 
 export type OneDriveStorageOptions = GraphStorageOptions;
 export interface SharePointStorageOptions extends GraphStorageOptions {
   siteId: string;
+}
+
+function boundedFetch(fetcher: typeof fetch, timeoutMs: number): typeof fetch {
+  return (input, init) => {
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = init?.signal
+      ? AbortSignal.any([init.signal, timeout])
+      : timeout;
+    return fetcher(input, { ...init, signal });
+  };
 }
 
 function record(value: unknown): Metadata | null {
@@ -171,10 +183,20 @@ class GraphStorage extends FileStorage {
     if (!options.driveId || !options.rootId) {
       throw new InvalidArgumentError("driveId and rootId are required");
     }
+    const timeoutMs = options.timeoutMs ?? 300_000;
+    if (
+      !Number.isSafeInteger(timeoutMs) ||
+      timeoutMs <= 0 ||
+      timeoutMs > 2_147_483_647
+    ) {
+      throw new InvalidArgumentError(
+        "timeoutMs must be between 1 and 2147483647",
+      );
+    }
     this.#driveId = options.driveId;
     this.#rootId = options.rootId;
     this.#auth = options.auth;
-    this.#fetch = options.fetch ?? fetch;
+    this.#fetch = boundedFetch(options.fetch ?? fetch, timeoutMs);
     this.#driveType = driveType;
     this.#siteId = siteId;
     this.#base = `${GRAPH_URL}/drives/${encodeURIComponent(options.driveId)}`;
@@ -313,15 +335,38 @@ class GraphStorage extends FileStorage {
     }
   }
 
-  async #jsonObject(response: Response): Promise<Metadata> {
+  async #jsonObject(response: Response, mutation = false): Promise<Metadata> {
     let payload: unknown;
     try {
       payload = await response.json();
-    } catch {
-      throw new ProviderError("Graph response was not JSON");
+    } catch (error) {
+      if (mutation) {
+        throw new IndeterminateOperationError(
+          "Graph mutation response failed",
+          {
+            provider: "microsoft",
+          },
+        );
+      }
+      if (error instanceof SyntaxError) {
+        throw new ProviderError("Graph response was not JSON");
+      }
+      throw new ProviderUnavailableError("Graph response body failed", {
+        provider: "microsoft",
+      });
     }
     const result = record(payload);
-    if (!result) throw new ProviderError("Graph response had an invalid shape");
+    if (!result) {
+      if (mutation) {
+        throw new IndeterminateOperationError(
+          "Graph mutation response was invalid",
+          {
+            provider: "microsoft",
+          },
+        );
+      }
+      throw new ProviderError("Graph response had an invalid shape");
+    }
     return result;
   }
 
@@ -726,7 +771,10 @@ class GraphStorage extends FileStorage {
         mutation: true,
       },
     );
-    return this.#entry(await this.#jsonObject(response), normalize_path(path));
+    return this.#entry(
+      await this.#jsonObject(response, true),
+      normalize_path(path),
+    );
   }
 
   async move(
@@ -770,7 +818,7 @@ class GraphStorage extends FileStorage {
       },
     );
     return this.#entry(
-      await this.#jsonObject(response),
+      await this.#jsonObject(response, true),
       normalize_path(destination),
     );
   }
@@ -863,7 +911,7 @@ class GraphStorage extends FileStorage {
         expected: [200, 201],
         mutation: true,
       });
-      result = await this.#jsonObject(response);
+      result = await this.#jsonObject(response, true);
     } else {
       const endpoint = existing
         ? `${this.#itemUrl(String(existing.id))}/createUploadSession`
@@ -879,7 +927,7 @@ class GraphStorage extends FileStorage {
         json: { item },
         mutation: true,
       });
-      const payload = await this.#jsonObject(sessionResponse);
+      const payload = await this.#jsonObject(sessionResponse, true);
       let session: string;
       try {
         session = signedUrl(payload.uploadUrl);
@@ -960,7 +1008,7 @@ class GraphStorage extends FileStorage {
     if (response.status !== 200) {
       throw this.#error(response, "write", undefined, true);
     }
-    const payload = await this.#jsonObject(response);
+    const payload = await this.#jsonObject(response, true);
     if (record(payload.file)) return [null, payload];
     return [this.#nextOffset(payload), null];
   }
@@ -1028,10 +1076,10 @@ class GraphStorage extends FileStorage {
       }
       if (response) {
         if (response.status === 200 || response.status === 201) {
-          return [end, await this.#jsonObject(response)];
+          return [end, await this.#jsonObject(response, true)];
         }
         if (response.status === 202) {
-          const next = this.#nextOffset(await this.#jsonObject(response));
+          const next = this.#nextOffset(await this.#jsonObject(response, true));
           if (next === end) return [next, null];
           if (next !== start) {
             throw new IndeterminateOperationError(

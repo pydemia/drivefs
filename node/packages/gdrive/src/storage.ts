@@ -48,6 +48,18 @@ export interface GoogleDriveStorageOptions {
   auth: GoogleAuth;
   /** Allows HTTP fixture injection without changing the public operations. */
   fetch?: typeof fetch;
+  /** Total deadline for each HTTP request, including its response body. Default: 5 minutes. */
+  timeoutMs?: number;
+}
+
+function boundedFetch(fetcher: typeof fetch, timeoutMs: number): typeof fetch {
+  return (input, init) => {
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = init?.signal
+      ? AbortSignal.any([init.signal, timeout])
+      : timeout;
+    return fetcher(input, { ...init, signal });
+  };
 }
 
 function escapeQuery(value: string): string {
@@ -146,9 +158,19 @@ export class GoogleDriveStorage extends FileStorage {
     if (!options.rootId) {
       throw new InvalidArgumentError("rootId must be nonempty");
     }
+    const timeoutMs = options.timeoutMs ?? 300_000;
+    if (
+      !Number.isSafeInteger(timeoutMs) ||
+      timeoutMs <= 0 ||
+      timeoutMs > 2_147_483_647
+    ) {
+      throw new InvalidArgumentError(
+        "timeoutMs must be between 1 and 2147483647",
+      );
+    }
     this.#rootId = options.rootId;
     this.#auth = options.auth;
-    this.#fetch = options.fetch ?? fetch;
+    this.#fetch = boundedFetch(options.fetch ?? fetch, timeoutMs);
   }
 
   get capabilities(): StorageCapabilities {
@@ -306,14 +328,35 @@ export class GoogleDriveStorage extends FileStorage {
     }
   }
 
-  async #jsonObject(response: Response): Promise<Metadata> {
+  async #jsonObject(response: Response, mutation = false): Promise<Metadata> {
     let payload: unknown;
     try {
       payload = await response.json();
-    } catch {
-      throw new ProviderError("Google response was not JSON");
+    } catch (error) {
+      if (mutation) {
+        throw new IndeterminateOperationError(
+          "Google mutation response failed",
+          {
+            provider: "gdrive",
+          },
+        );
+      }
+      if (error instanceof SyntaxError) {
+        throw new ProviderError("Google response was not JSON");
+      }
+      throw new ProviderUnavailableError("Google response body failed", {
+        provider: "gdrive",
+      });
     }
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      if (mutation) {
+        throw new IndeterminateOperationError(
+          "Google mutation response was invalid",
+          {
+            provider: "gdrive",
+          },
+        );
+      }
       throw new ProviderError("Google response had an invalid shape");
     }
     return payload as Metadata;
@@ -664,7 +707,10 @@ export class GoogleDriveStorage extends FileStorage {
       expected: [200, 201],
       mutation: true,
     });
-    return this.#entry(await this.#jsonObject(response), normalize_path(path));
+    return this.#entry(
+      await this.#jsonObject(response, true),
+      normalize_path(path),
+    );
   }
 
   async move(
@@ -717,7 +763,7 @@ export class GoogleDriveStorage extends FileStorage {
       },
     );
     return this.#entry(
-      await this.#jsonObject(response),
+      await this.#jsonObject(response, true),
       normalize_path(destination),
     );
   }
@@ -841,7 +887,7 @@ export class GoogleDriveStorage extends FileStorage {
           },
         );
       }
-      result = await this.#jsonObject(response);
+      result = await this.#jsonObject(response, true);
     } else {
       const uploadUrl = existing
         ? `${UPLOAD_URL}/${encodeURIComponent(String(existing.id))}`
@@ -950,7 +996,7 @@ export class GoogleDriveStorage extends FileStorage {
       );
     }
     if (response.status === 200 || response.status === 201) {
-      return [total, await this.#jsonObject(response)];
+      return [total, await this.#jsonObject(response, true)];
     }
     if (response.status === 308) {
       return [this.#acknowledged(response), null];
@@ -1029,7 +1075,7 @@ export class GoogleDriveStorage extends FileStorage {
       }
       if (response) {
         if (response.status === 200 || response.status === 201) {
-          return [total, await this.#jsonObject(response)];
+          return [total, await this.#jsonObject(response, true)];
         }
         if (response.status === 308) {
           const acknowledged = this.#acknowledged(response);

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { clearTimeout, setTimeout } from "node:timers";
 
 import {
   AmbiguousPathError,
@@ -516,6 +517,76 @@ test("Google refresh is serialized and save failures are safe", async () => {
     (error) =>
       error.name === "AuthenticationError" && !error.message.includes("secret"),
   );
+});
+
+test("Google request deadline bounds a stalled transport", async () => {
+  const auth = new GoogleAuth({
+    store: new MemoryCredentialStore({ access_token: "test-token" }),
+  });
+  let aborted = false;
+  const fetcher = (_url, init) =>
+    new Promise((resolve, reject) => {
+      assert.ok(init.signal);
+      const timer = setTimeout(
+        () => resolve(new Response(null, { status: 204 })),
+        1_000,
+      );
+      init.signal.addEventListener(
+        "abort",
+        () => {
+          aborted = true;
+          clearTimeout(timer);
+          reject(init.signal.reason);
+        },
+        { once: true },
+      );
+    });
+  const storage = new GoogleDriveStorage({
+    rootId: "root",
+    auth,
+    fetch: fetcher,
+    timeoutMs: 20,
+  });
+  await assert.rejects(storage.stat("/"), ProviderUnavailableError);
+  assert.equal(aborted, true);
+  assert.throws(
+    () => new GoogleDriveStorage({ rootId: "root", auth, timeoutMs: 0 }),
+    InvalidArgumentError,
+  );
+  assert.throws(
+    () =>
+      new GoogleDriveStorage({
+        rootId: "root",
+        auth,
+        timeoutMs: 2_147_483_648,
+      }),
+    InvalidArgumentError,
+  );
+});
+
+test("Google body failures distinguish reads from uncertain writes", async () => {
+  const { api, store } = setup();
+  let failRead = true;
+  const fetcher = async (url, init) => {
+    const response = await api.fetch(url, init);
+    if (
+      (failRead && init.method === "GET") ||
+      (!failRead && init.method === "POST")
+    ) {
+      response.json = async () => {
+        throw Object.assign(new Error("timed out"), { name: "TimeoutError" });
+      };
+    }
+    return response;
+  };
+  const storage = new GoogleDriveStorage({
+    rootId: "root",
+    auth: new GoogleAuth({ store }),
+    fetch: fetcher,
+  });
+  await assert.rejects(storage.stat("/"), ProviderUnavailableError);
+  failRead = false;
+  await assert.rejects(storage.mkdir("/late"), IndeterminateOperationError);
 });
 
 async function* stream(bytes) {

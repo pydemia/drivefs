@@ -29,3 +29,7 @@ For SharePoint use a tenant-specific `GraphAuth` and `SharePointStorage` with
 that implements `load()` and `save()` so refresh-token rotation is retained.
 The caller obtains initial consent and tokens. Real-account verification is
 required before v1.0.0 release.
+
+Each HTTP request, including reading its response body, has a five-minute
+deadline by default. Set `timeoutMs` on either storage class when a large
+transfer needs a longer deadline. A stalled request raises a storage error.

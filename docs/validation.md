@@ -106,6 +106,26 @@ provider credential이나 게시 권한은 workflow에 제공하지 않는다.
 아직 실행 결과가 없으므로 macOS와 Windows Python 3.13·3.14 gate는
 여전히 미통과다.
 
+## 후속 Node HTTP deadline 검증
+
+Node provider의 모든 HTTP 호출에 기본 5분 deadline을 적용했다. 본문
+읽기 실패가 조회 중 발생하면 일시 장애로, 변경 응답 중 발생하면
+완료 여부 불명으로 분류하는 fixture를 추가했다. 이 후속 변경의
+Linux Node 24 컨테이너와 Windows Node 24에서 ESLint·Prettier·
+TypeScript 및 37개 test가 각각 exit 0이었다. 새 tarball을 각 환경에서
+다시 만들고 core·plugin별·전체 설치 smoke도 exit 0이었다. 두 환경의
+산출물 SHA-256은 다음과 같다. 앞 표의 Node hash는 이전 코드 기준의
+이력으로 남겨 둔다.
+
+| 환경 | 파일 | SHA-256 |
+| --- | --- | --- |
+| Linux Node 24 | `pydemia-drivefs-0.1.0.tgz` | `8fde025674b4a69ead9bf11c58e6a1e9f8f5b1f679a5edc659f5bd7561d925d3` |
+| Linux Node 24 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `633c076022e8055bd4f52ab8f13ce4cb83b30a0a86e8d25f8b4e43c02f646409` |
+| Linux Node 24 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `b50f302170b236cf4331cf3131220b485594d2acbe28d41931b568bdf7aabf08` |
+| Windows Node 24 | `pydemia-drivefs-0.1.0.tgz` | `fd54bb991177c41155ee1272c4359be5556ad0b8a9c14a7c95e0185655850117` |
+| Windows Node 24 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `dcd12839e0a9e6b3597587e3bed59162c13e14709f6ce952cf87c3ce0e6d63a1` |
+| Windows Node 24 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `7dbe5f99483e7e3b98f4999f362f2c9e7c13af2fda4bdf1505c01077d6c42469` |
+
 ## v1.0.0 미통과 gate
 
 | gate | 현재 증거 |

@@ -132,6 +132,9 @@ const sharepoint = new SharePointStorage({
 실제 실행 시 환경 값 부재를 먼저 검사하고, refresh token과 만료 시각도
 영속 store에 보관한다. 메모리 저장소는 프로세스를 다시 시작하면
 token을 잃는다.
+Node provider의 각 HTTP 요청은 응답 본문 읽기를 포함해 기본 5분
+deadline이 있다. 느린 대용량 전송에는 storage 생성자의 `timeoutMs`를
+양의 정수 밀리초로 늘린다.
 
 ## 파일 작업과 대용량 전송
 

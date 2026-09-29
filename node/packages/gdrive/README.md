@@ -33,6 +33,10 @@ before using it. A failed save raises `AuthenticationError`. The in-memory
 store above does not persist credentials across processes. Construction
 does not open a browser or write credentials to a global file.
 
+Each HTTP request, including reading its response body, has a five-minute
+deadline by default. Set `timeoutMs` on `GoogleDriveStorage` when a large
+transfer needs a longer deadline. A stalled request raises a storage error.
+
 The root must be a folder in My Drive accessible to the authorized app.
 `conditional_replace` is false until verified with a real account. HTTP
 fixtures currently cover the implementation; real-account validation
