@@ -249,6 +249,18 @@ exit 0이었다. Node 24는 `npm ci` 후 같은 Node 검사와 40개 테스트�
 exit 0이었다. 이번 변경은 conformance 입력과 테스트 실행기에만
 한정되며 배포 package source는 변경하지 않았다.
 
+## Registry 이름 조회
+
+2026-09-30에 공식 [PyPI JSON API](https://pypi.org/pypi/drivefs/json)의
+`drivefs`, `drivefs-gdrive`, `drivefs-microsoft`, `drivefs-fsspec`와
+[npm registry](https://registry.npmjs.org/@pydemia%2fdrivefs)의
+`@pydemia/drivefs`, `@pydemia/drivefs-gdrive`,
+`@pydemia/drivefs-microsoft` 공개 metadata endpoint를 `curl.exe`로
+조회했다. 일곱 요청 모두 HTTP 404였고, 각 registry의 대표 응답
+본문은 `Not Found`였다.
+이는 공개 package metadata가 현재 없다는 증거일 뿐, 이름 예약
+가능성이나 해당 계정의 게시 권한을 증명하지 않는다.
+
 ## v1.0.0 미통과 gate
 
 실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
@@ -262,7 +274,7 @@ credential 없이 실행하면 쓰기 전에 종료된다. 아직 어떤 실제 
 | --- | --- |
 | Google·OneDrive Personal·SharePoint 실제 계정 × Python·Node lifecycle 및 refresh | 계정·credential이 없어 실행하지 못함. fixture 통과는 대체 증거가 아님 |
 | Google 실제 계정 중복 이름·native 문서, provider별 권한·휴지통·대용량 응답 | 실행하지 못함 |
-| registry 이름·npm scope 게시 권한, LICENSE, 최종 1.0 metadata | 확인·확정 전 |
+| registry 이름·npm scope 게시 권한, LICENSE, 최종 1.0 metadata | 위 공개 metadata 조회는 404. 게시 권한·이름 예약 가능성, LICENSE·1.0 metadata는 미확정 |
 | 원자적 조건부 교체 | 모든 provider가 capability=false; 1.0 필수 기능은 아니나 지원 주장 불가 |
 
 따라서 이 기록은 구현 후보의 컨테이너 검증 증거이며 v1.0.0 배포
