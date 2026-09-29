@@ -102,9 +102,16 @@ provider credential이나 게시 권한은 workflow에 제공하지 않는다.
 
 검증 스크립트는 Windows Python 3.12·Node 24와 Linux 컨테이너 Python
 3.12~3.14·Node 24에서 **새로 빌드한** 배포물로 각각 exit 0을 확인했다.
-`actionlint`로 workflow 구문 검사도 통과했다. GitHub Actions 행렬은
-아직 실행 결과가 없으므로 macOS와 Windows Python 3.13·3.14 gate는
-여전히 미통과다.
+`actionlint`로 workflow 구문 검사도 통과했다. 이후
+[GitHub Actions 실행 36627177438](https://github.com/pydemia/drivefs/actions/runs/36627177438)에서
+`f73f0d8`의 Python 3.12·3.13·3.14 × Linux·Windows·macOS Intel·
+macOS arm64 12개 job이 모두 통과했다. Node 4개 job은 실패했다.
+Linux·macOS는 core를 빌드하기 전에 type check가 실행되어
+`@pydemia/drivefs` 선언을 찾지 못한 것이 check annotation으로 확인됐다.
+Windows는 lint 단계 실패이며 상세 로그에 대한 접근은 확인되지 않았다.
+후속 변경에서 Node type check 전에 빌드하도록 하고, checkout의
+줄바꿈 차이를 막도록 `.gitattributes`를 추가했다. 이 수정의 원격 결과는
+아직 없으므로 Node OS gate는 미통과로 유지한다.
 
 ## 후속 Node HTTP deadline 검증
 
@@ -156,11 +163,18 @@ SHA-256은 다음과 같다.
 
 ## v1.0.0 미통과 gate
 
+실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
+있다. Windows에서 Python 3.12·Node 24 검증기를 각각 언어별 fake
+storage에 연결해 lifecycle·대용량 경로·정리 절차를 실행했고, 임시
+설정 파일에 갱신 token을 저장하는 경로도 확인했다. 실제 계정
+credential 없이 실행하면 쓰기 전에 종료된다. 아직 어떤 실제 계정
+결과도 얻지 못했다.
+
 | gate | 현재 증거 |
 | --- | --- |
 | Google·OneDrive Personal·SharePoint 실제 계정 × Python·Node lifecycle 및 refresh | 계정·credential이 없어 실행하지 못함. fixture 통과는 대체 증거가 아님 |
 | Google 실제 계정 중복 이름·native 문서, provider별 권한·휴지통·대용량 응답 | 실행하지 못함 |
-| Windows Python 3.13·3.14 및 macOS x86_64/arm64 설치 smoke·테스트 | Windows Python 3.12·Node 24와 Linux amd64만 검증 |
+| Node 24 × Linux·Windows·macOS x86_64/arm64 CI build·test·설치 smoke | 첫 원격 행렬에서 4개 job 실패. Python 12개 job은 통과했으나 Node 후속 수정 재검증 전 |
 | registry 이름·npm scope 게시 권한, LICENSE, 최종 1.0 metadata | 확인·확정 전 |
 | 원자적 조건부 교체 | 모든 provider가 capability=false; 1.0 필수 기능은 아니나 지원 주장 불가 |
 
