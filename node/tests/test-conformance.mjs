@@ -67,7 +67,7 @@ async function execute(storage, refs, step) {
     case "inject":
       return storage.inject(step.path, {
         kind: step.kind ?? "file",
-        content: encoder.encode(step.data ?? ""),
+        content: encoder.encode((step.data ?? "").repeat(step.repeat ?? 1)),
       });
     case "inject_foreign":
       return new FakeStorage().inject(step.path);
@@ -82,7 +82,7 @@ async function execute(storage, refs, step) {
         new drivefs[step.error_type]("fixture failure"),
       );
     case "write": {
-      const bytes = encoder.encode(step.data);
+      const bytes = encoder.encode(step.data.repeat(step.repeat ?? 1));
       const source = step.stream ? stream(bytes) : bytes;
       return storage.write(step.path, source, {
         overwrite: step.overwrite ?? false,
@@ -120,7 +120,9 @@ async function execute(storage, refs, step) {
 }
 
 async function* stream(bytes) {
-  yield bytes;
+  for (let offset = 0; offset < bytes.length; offset += 64 * 1024) {
+    yield bytes.subarray(offset, offset + 64 * 1024);
+  }
 }
 
 function concat(chunks) {

@@ -80,7 +80,7 @@ class ConformanceTest(unittest.TestCase):
             return storage.inject(
                 step["path"],
                 kind=step.get("kind", "file"),
-                content=step.get("data", "").encode("utf-8"),
+                content=(step.get("data", "") * step.get("repeat", 1)).encode("utf-8"),
             )
         if op == "inject_foreign":
             return FakeStorage().inject(step["path"])
@@ -93,7 +93,7 @@ class ConformanceTest(unittest.TestCase):
             error = getattr(drivefs, step["error_type"])
             return storage.fail_list_after_page(error("fixture failure"))
         if op == "write":
-            data = step["data"].encode("utf-8")
+            data = (step["data"] * step.get("repeat", 1)).encode("utf-8")
             source = BytesIO(data) if step.get("stream") else data
             return storage.write(
                 step["path"],

@@ -90,6 +90,16 @@
       ]
     },
     {
+      "id": "large-stream-and-range",
+      "steps": [
+        {"op": "write", "path": "/large", "data": "x", "repeat": 4194321, "stream": true, "size": 4194321, "expect": {"size": 4194321}},
+        {"op": "open_reader", "path": "/large", "expect": {"count": 4194321}},
+        {"op": "read_range", "path": "/large", "offset": 4194319, "length": 8, "expect": {"bytes": "xx"}},
+        {"op": "delete", "path": "/large"},
+        {"op": "exists", "path": "/large", "expect": {"exists": false}}
+      ]
+    },
+    {
       "id": "range-and-reader",
       "steps": [
         {"op": "write", "path": "/data", "data": "abcdef"},
