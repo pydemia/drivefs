@@ -167,6 +167,40 @@ SHA-256은 다음과 같다.
 | Windows Python 3.12 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `f945bbb8a708321bdec8e856cc5b3fbae5f0f174893ca7813254bf07c9fc08a2` |
 | Windows Python 3.12 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `6997e67c0c475da747abee98f45ccf9f4556f7347ba534c8179f487df29b7e61` |
 
+## 후속 변경 응답 검증 (`275e18e`)
+
+성공 상태의 변경 응답 본문이 깨졌거나 필수 metadata가 빠졌다면
+완료 여부를 알 수 없으므로 두 언어의 Google·Graph plugin이
+`IndeterminateOperationError`를 낸다. 조회 응답의 형식 오류는
+`ProviderError`로 남는다. Python은 24개, Node는 37개 fixture test가
+Windows와 Linux 컨테이너에서 통과했다. Linux amd64 컨테이너의
+Python 3.12·3.13·3.14는 각 이미지에서 Ruff·mypy strict, 테스트,
+wheel 네 개의 새 환경 격리 설치가 모두 exit 0이었다. Node 24는
+ESLint·Prettier·TypeScript, 테스트, tarball 세 개의 새 환경 격리
+설치가 exit 0이었다. 사용한 이미지 digest는 위 [이미지](#이미지)
+표와 같다. 재현 명령은 위의 소스 검사 명령과
+`python validation/verify_python_artifacts.py --build .artifacts/mutation-py3XX`,
+`npm pack --workspaces --pack-destination /out`,
+`node validation/verify_node_artifacts.mjs <tarball-directory>`다.
+
+| 환경 | 산출물 | SHA-256 |
+| --- | --- | --- |
+| Python 3.12 | `drivefs-0.1.0-py3-none-any.whl` | `b632dbd8ed17364d1487815c3fa5718c47d6f4afe590f33a87ec3c7c9e7a88f6` |
+| Python 3.12 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `4281836e8cc0426d15fc756a386a3d2b05e67129d1d99974d4fe320e4e8b1268` |
+| Python 3.12 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `11249d2be6af0d5a1030ca67a497adf29232fe27f00097cf3b26cc1234d6b17f` |
+| Python 3.12 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `068aa3d0585ccc26ed74a43c5b7948382736befce81c9820b17b479fff10088b` |
+| Python 3.13 | `drivefs-0.1.0-py3-none-any.whl` | `2022381276fe05071ccdd651734039f21ceb08b8186a63f7d91b448a0d3c30cf` |
+| Python 3.13 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `0daae9f0e9c969c15a660271fe4cd7df172dcd5c5808038def576510ddeda153` |
+| Python 3.13 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `5f121fc0c955d1f216f53624bdd07f5ce9102d1c0252404131813f5da930fdc9` |
+| Python 3.13 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `127ebd8fc751ff6f1199dd4498a75de83a7431b6368464caaf352d573a38119b` |
+| Python 3.14 | `drivefs-0.1.0-py3-none-any.whl` | `424b589667c6f486353e6ca02637b011c9eebb437a51d93780de7371e0e92434` |
+| Python 3.14 | `drivefs_gdrive-0.1.0-py3-none-any.whl` | `10b9d014d066f830e37b050a85a1ec863238ebc07105b2eb062b82baa462e100` |
+| Python 3.14 | `drivefs_microsoft-0.1.0-py3-none-any.whl` | `023725d49acd947d17a94b38bd6b813e3a913ae9f82216cc76a2b06dc084a04f` |
+| Python 3.14 | `drivefs_fsspec-0.1.0-py3-none-any.whl` | `855d1a3ea500b13b843c8ac19bbb36adc1d64c4dcdc853546fff15b4ec41d737` |
+| Node 24 | `pydemia-drivefs-0.1.0.tgz` | `731c4060810b3406458b6fef8d0c68de809578239ceb4723a60ff1269ec1206c` |
+| Node 24 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `57bd77932a968a366c833fab84de9f305888e04923f6f4aa58ddd7668e8127f7` |
+| Node 24 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `d9e91b6fb6e36da72cdb8228cca831f46299e714bc813dc9c61ecd02b0b0d263` |
+
 ## v1.0.0 미통과 gate
 
 실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
