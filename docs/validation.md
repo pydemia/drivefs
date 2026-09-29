@@ -235,6 +235,20 @@ exit 0이었다. Linux amd64 `node:24-bookworm-slim`
 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `9592aece6403494ae2d85699dd178e04ee0af5a9da754e0cce4bb30b00b1c1c9` |
 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `cf694b47e0473d5e4bd1ba37409b72d2e7e12c6dfbbb900ae3194cb56d798f06` |
 
+## 공통 대용량 conformance 검증 (`7ab3bbb`)
+
+`conformance/cases/v1.json`에 `large-stream-and-range`를 추가했다.
+4 MiB + 17 bytes를 두 언어의 fake storage에 스트림으로 쓰고,
+전체 reader 길이, EOF 부근 범위 읽기, 삭제 후 조회를 같은 case에서
+검사한다. Node 테스트 입력은 64 KiB 조각으로 전달한다.
+Windows에서 Python 3.12의 24개 unittest와 Node 24의 40개 테스트,
+Ruff·mypy strict·ESLint·Prettier·TypeScript 검사가 exit 0이었다.
+Linux amd64 컨테이너에서 위 [이미지](#이미지)의 Python 3.12·3.13·3.14는
+각각 `pip install -e` 후 같은 Python 정적 검사와 24개 테스트가
+exit 0이었다. Node 24는 `npm ci` 후 같은 Node 검사와 40개 테스트가
+exit 0이었다. 이번 변경은 conformance 입력과 테스트 실행기에만
+한정되며 배포 package source는 변경하지 않았다.
+
 ## v1.0.0 미통과 gate
 
 실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
