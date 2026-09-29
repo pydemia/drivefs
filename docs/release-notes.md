@@ -9,8 +9,8 @@
 - Google My Drive 지정 폴더와 Microsoft Graph의 OneDrive Personal,
   SharePoint document library plugin을 추가했다.
 - Python 읽기 전용 `fsspec` adapter를 별도 package로 추가했다.
-- Python 3.12~3.14 및 Node 24 Linux amd64 컨테이너에서 정적 검사,
-  fixture test, wheel/tarball 설치 smoke를 통과했다. 상세 증거는
+- Python 3.12~3.14 및 Node 24 Linux amd64 컨테이너, Python 3.12와
+  Node 24 Windows x86_64에서 검사와 설치 smoke를 통과했다. 상세 증거는
   [검증 기록](validation.md)에 있다.
 
 공개 API와 오류 이름은 [API 명세](../spec/storage-api.md)에 정의되어

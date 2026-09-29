@@ -1,10 +1,11 @@
 # 0.1.0 구현 후보 검증 기록
 
-검증일: 2026-09-30 · 코드 기준: `7404814` (`codex/implement-v1`).
+검증일: 2026-09-30 · 코드 기준: `d3e5a3a` (`codex/implement-v1`).
 Microsoft의 빈 파일 경로 수정 `4ddfd09`와 Python fsspec 변경
 `413e9db`까지 포함한다.
-검증 환경은 Docker Desktop의 Linux `amd64`다. `.artifacts/`는 Git에서
-제외하고, 아래 hash는 해당 실행에서 생성된 파일의 SHA-256이다.
+검증 환경은 Docker Desktop의 Linux `amd64`와 로컬 Windows `x86_64`다.
+`.artifacts/`는 Git에서 제외하고, 아래 hash는 해당 실행에서 생성된
+파일의 SHA-256이다.
 
 ## 이미지
 
@@ -27,6 +28,11 @@ Microsoft의 빈 파일 경로 수정 `4ddfd09`와 Python fsspec 변경
 | Python 3.12, 3.13, 3.14: 각 버전 wheel을 새 컨테이너에 설치 후 공개 API fixture smoke | 버전별 exit 0; 세 provider stat/range와 fsspec seek |
 | Node 24: core 단독·gdrive·microsoft 개별 오프라인 tarball 설치 | 각각 exit 0; 선택하지 않은 plugin 없음 |
 | Node 24: 세 tarball을 새 컨테이너에 오프라인 설치 후 공개 API fixture smoke | exit 0; 세 provider stat/range |
+| Windows x86_64, Python 3.12.14: 새 venv에 네 wheel 설치 후 공개 API fixture smoke와 unittest | exit 0; 20개 unittest 통과 |
+| Windows x86_64, Python 3.12.14: core와 각 plugin을 별도 venv에 설치 | 네 환경 각각 exit 0; 선택하지 않은 plugin 없음 |
+| Windows x86_64, Node 24.21.0: 새 디렉터리에 세 tarball을 오프라인 설치 후 공개 API fixture smoke | exit 0; 세 provider stat/range |
+| Windows x86_64, Node 24.21.0: core와 두 plugin을 별도 디렉터리에 설치 | 세 환경 각각 exit 0; 선택하지 않은 plugin 없음 |
+| Windows x86_64, Node 24.21.0: `npm ci`, ESLint, Prettier, TypeScript, build, test | exit 0; 33개 test 통과 |
 | Gitleaks: Git 이력 및 `validation/` directory | 각 exit 0; 탐지 결과 없음 |
 
 소스 검사에 사용한 컨테이너 내부 명령은 다음과 같다. Python에서는
@@ -50,8 +56,9 @@ Node tarball은 `npm ci && npm run build && npm pack --workspaces
 `/tmp`에는 `.artifacts/`와 `validation/`만 read-only로 마운트했다.
 Python은 외부 `httpx`·`fsspec` 설치 후 `--no-index --find-links=/artifacts`
 로 로컬 wheel을 설치했고, Node는 로컬 tarball 세 개를 `npm install
---offline`으로 설치했다. 따라서 smoke에서 workspace link와 소스
-checkout을 사용하지 않았다. 스크립트는
+--offline`으로 설치했다. Windows도 별도 venv와 빈 npm 프로젝트에서
+동일한 산출물을 설치했다. 따라서 artifact smoke에서 workspace link와
+소스 checkout을 사용하지 않았다. 스크립트는
 [`python_package_smoke.py`](../validation/python_package_smoke.py)와
 [`node_package_smoke.mjs`](../validation/node_package_smoke.mjs)이다.
 
@@ -90,7 +97,7 @@ wheel hash는 각각의 빌드 실행 결과이며, wheel zip metadata 때문에
 | --- | --- |
 | Google·OneDrive Personal·SharePoint 실제 계정 × Python·Node lifecycle 및 refresh | 계정·credential이 없어 실행하지 못함. fixture 통과는 대체 증거가 아님 |
 | Google 실제 계정 중복 이름·native 문서, provider별 권한·휴지통·대용량 응답 | 실행하지 못함 |
-| Windows x86_64, macOS x86_64/arm64 설치 smoke·테스트 | 현재 Linux amd64 컨테이너만 검증 |
+| Windows Python 3.13·3.14 및 macOS x86_64/arm64 설치 smoke·테스트 | Windows Python 3.12·Node 24와 Linux amd64만 검증 |
 | registry 이름·npm scope 게시 권한, LICENSE, 최종 1.0 metadata | 확인·확정 전 |
 | 원자적 조건부 교체 | 모든 provider가 capability=false; 1.0 필수 기능은 아니나 지원 주장 불가 |
 

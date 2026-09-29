@@ -4,10 +4,10 @@ Google Drive, OneDrive Personal, SharePoint document library를 애플리케이�
 파일 저장소로 사용하는 Python·Node.js 라이브러리입니다. 한 root 아래의
 바이너리 파일과 디렉터리를 같은 `FileStorage` 연산으로 다룹니다.
 
-현재 코드는 **0.1.0 구현 후보**입니다. Linux 컨테이너에서 fixture,
-정적 검사, 배포물 설치 검증을 통과했습니다. 실제 provider 계정과
-Windows·macOS 검증이 끝나지 않아 v1.0.0 배포 기준은 아직 충족하지
-않았습니다.
+현재 코드는 **0.1.0 구현 후보**입니다. Linux 컨테이너와 Windows
+x86_64에서 fixture·배포물 설치 검증을 통과했습니다. 실제 provider
+계정과 macOS, Windows의 남은 Python 버전 검증이 끝나지 않아 v1.0.0
+배포 기준은 아직 충족하지 않았습니다.
 
 ## 패키지와 의존성
 
