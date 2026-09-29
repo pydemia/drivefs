@@ -360,6 +360,44 @@ test("Google public API lifecycle and streaming", async () => {
   await storage.delete(folder.ref);
 });
 
+test("Google reader cleanup does not replace a successful read", async () => {
+  const { api, fetcher, store } = setup();
+  api.inject("item", { data: encoder.encode("abc") });
+  let cancelCount = 0;
+  const storage = new GoogleDriveStorage({
+    rootId: "root",
+    auth: new GoogleAuth({ store }),
+    fetch: async (input, init) => {
+      if (new URL(input).searchParams.get("alt") !== "media") {
+        return fetcher(input, init);
+      }
+      const range = new Headers(init.headers).get("Range");
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode("abc"));
+          },
+          cancel() {
+            cancelCount += 1;
+            throw new Error("cleanup failed");
+          },
+        }),
+        {
+          status: range ? 206 : 200,
+          headers: range ? { "Content-Range": "bytes 0-2/3" } : {},
+        },
+      );
+    },
+  });
+
+  for await (const chunk of storage.open_reader("/item")) {
+    assert.equal(decoder.decode(chunk), "abc");
+    break;
+  }
+  assert.equal(decoder.decode(await storage.read_range("/item", 0, 3)), "abc");
+  assert.equal(cancelCount, 2);
+});
+
 test("Google duplicates, native items, outside refs, and range handling", async () => {
   const { api, storage } = setup();
   const first = api.inject("same", { data: encoder.encode("one") });

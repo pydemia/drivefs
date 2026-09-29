@@ -632,7 +632,11 @@ export class GoogleDriveStorage extends FileStorage {
         provider: "gdrive",
       });
     } finally {
-      await reader.cancel();
+      try {
+        await reader.cancel();
+      } catch {
+        /* already closing */
+      }
       reader.releaseLock();
     }
   }
@@ -691,7 +695,11 @@ export class GoogleDriveStorage extends FileStorage {
         provider: "gdrive",
       });
     } finally {
-      await reader.cancel();
+      try {
+        await reader.cancel();
+      } catch {
+        /* already closing */
+      }
       reader.releaseLock();
     }
     return joinBytes(chunks);
