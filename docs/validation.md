@@ -91,7 +91,7 @@ plugin은 `@pydemia/drivefs`만 요구한다.
 wheel hash는 각각의 빌드 실행 결과이며, wheel zip metadata 때문에
 다른 빌드에서 byte-for-byte 동일함을 주장하지 않는다.
 
-## 자동 OS 행렬 준비
+## 자동 OS 행렬
 
 [`verify.yml`](../.github/workflows/verify.yml)은 Python 3.12·3.13·3.14와
 Node 24를 Linux x86_64, Windows x86_64, macOS x86_64/arm64에서 각각
@@ -110,8 +110,14 @@ Linux·macOS는 core를 빌드하기 전에 type check가 실행되어
 `@pydemia/drivefs` 선언을 찾지 못한 것이 check annotation으로 확인됐다.
 Windows는 lint 단계 실패이며 상세 로그에 대한 접근은 확인되지 않았다.
 후속 변경에서 Node type check 전에 빌드하도록 하고, checkout의
-줄바꿈 차이를 막도록 `.gitattributes`를 추가했다. 이 수정의 원격 결과는
-아직 없으므로 Node OS gate는 미통과로 유지한다.
+줄바꿈 차이를 막도록 `.gitattributes`를 추가했다.
+
+[GitHub Actions 실행 36628748926](https://github.com/pydemia/drivefs/actions/runs/36628748926)은
+`3ccbde6`에서 **16개 job 모두 success**로 완료됐다. Python 3.12·
+3.13·3.14와 Node 24의 Linux x86_64, Windows x86_64, macOS
+x86_64/arm64 조합마다 wheel 또는 tarball을 새 환경에 설치하는 마지막
+artifact smoke 단계도 모두 success였다. 이 결과로 목표 OS의
+fixture·배포물 설치 gate를 통과했다. 실제 계정 검증은 별개다.
 
 ## 후속 Node HTTP deadline 검증
 
@@ -174,7 +180,6 @@ credential 없이 실행하면 쓰기 전에 종료된다. 아직 어떤 실제 
 | --- | --- |
 | Google·OneDrive Personal·SharePoint 실제 계정 × Python·Node lifecycle 및 refresh | 계정·credential이 없어 실행하지 못함. fixture 통과는 대체 증거가 아님 |
 | Google 실제 계정 중복 이름·native 문서, provider별 권한·휴지통·대용량 응답 | 실행하지 못함 |
-| Node 24 × Linux·Windows·macOS x86_64/arm64 CI build·test·설치 smoke | 첫 원격 행렬에서 4개 job 실패. Python 12개 job은 통과했으나 Node 후속 수정 재검증 전 |
 | registry 이름·npm scope 게시 권한, LICENSE, 최종 1.0 metadata | 확인·확정 전 |
 | 원자적 조건부 교체 | 모든 provider가 capability=false; 1.0 필수 기능은 아니나 지원 주장 불가 |
 

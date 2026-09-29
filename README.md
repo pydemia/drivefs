@@ -4,9 +4,9 @@ Google Drive, OneDrive Personal, SharePoint document library를 애플리케이�
 파일 저장소로 사용하는 Python·Node.js 라이브러리입니다. 한 root 아래의
 바이너리 파일과 디렉터리를 같은 `FileStorage` 연산으로 다룹니다.
 
-현재 코드는 **0.1.0 구현 후보**입니다. Linux 컨테이너와 Windows
-x86_64에서 fixture·배포물 설치 검증을 통과했습니다. 실제 provider
-계정과 macOS, Windows의 남은 Python 버전 검증이 끝나지 않아 v1.0.0
+현재 코드는 **0.1.0 구현 후보**입니다. Linux 컨테이너와 Linux·Windows·
+macOS CI 행렬에서 fixture·배포물 설치 검증을 통과했습니다. 실제
+provider 계정 검증과 게시 권한·라이선스 확정이 남아 있어 v1.0.0
 배포 기준은 아직 충족하지 않았습니다.
 
 ## 패키지와 의존성
@@ -49,4 +49,4 @@ const payload = await storage.read(entry.ref);
 - [v1 기획서](docs/v1-plan.md) · [기획 review](docs/v1-review.md)
 - [FileStorage API 명세](spec/storage-api.md)
 - [구현계획](docs/implementation-plan.md) · [구현계획 review](docs/implementation-review.md)
-- [사용 가이드](docs/usage.md) · [컨테이너 검증 기록](docs/validation.md) · [release notes](docs/release-notes.md)
+- [사용 가이드](docs/usage.md) · [검증 기록](docs/validation.md) · [실제 계정 검증](docs/live-validation.md) · [release notes](docs/release-notes.md)
