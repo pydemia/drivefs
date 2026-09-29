@@ -453,6 +453,14 @@ test("Graph duplicate names, root scope and ignored range", async () => {
   await assert.rejects(storage.stat(ref), NotFoundError);
 });
 
+test("Graph rejects a byte range beyond the safe integer limit", async () => {
+  const { storage } = make("personal");
+  await assert.rejects(
+    storage.read_range("/missing", Number.MAX_SAFE_INTEGER, 2),
+    InvalidArgumentError,
+  );
+});
+
 test("Graph error mapping, retry and refresh", async () => {
   const { api, storage, store } = make("personal");
   api.forcedStatus = 403;

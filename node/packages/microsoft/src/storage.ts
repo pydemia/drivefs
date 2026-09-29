@@ -714,7 +714,8 @@ class GraphStorage extends FileStorage {
       !Number.isSafeInteger(offset) ||
       !Number.isSafeInteger(length) ||
       offset < 0 ||
-      length < 0
+      length < 0 ||
+      (length > 0 && offset > Number.MAX_SAFE_INTEGER - (length - 1))
     ) {
       throw new InvalidArgumentError(
         "offset and length must be nonnegative integers",
