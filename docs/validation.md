@@ -201,6 +201,21 @@ ESLint·Prettier·TypeScript, 테스트, tarball 세 개의 새 환경 격리
 | Node 24 | `pydemia-drivefs-gdrive-0.1.0.tgz` | `57bd77932a968a366c833fab84de9f305888e04923f6f4aa58ddd7668e8127f7` |
 | Node 24 | `pydemia-drivefs-microsoft-0.1.0.tgz` | `d9e91b6fb6e36da72cdb8228cca831f46299e714bc813dc9c61ecd02b0b0d263` |
 
+## 후속 Node Graph byte range 검증 (`99cb291`)
+
+`offset + length - 1`이 JavaScript 안전 정수 범위를 넘는 요청은
+`InvalidArgumentError`로 원격 호출 전에 거부한다. Windows Node 24와
+Linux amd64 `node:24-bookworm-slim`에서 ESLint·Prettier·TypeScript,
+38개 테스트가 exit 0이었다. Linux 컨테이너에서 새 tarball을 만든 후
+`node validation/verify_node_artifacts.mjs <tarball-directory>`로 core,
+plugin별, 전체 설치 smoke가 exit 0이었다.
+
+| 산출물 | Linux Node 24 SHA-256 |
+| --- | --- |
+| `pydemia-drivefs-0.1.0.tgz` | `731c4060810b3406458b6fef8d0c68de809578239ceb4723a60ff1269ec1206c` |
+| `pydemia-drivefs-gdrive-0.1.0.tgz` | `57bd77932a968a366c833fab84de9f305888e04923f6f4aa58ddd7668e8127f7` |
+| `pydemia-drivefs-microsoft-0.1.0.tgz` | `cf694b47e0473d5e4bd1ba37409b72d2e7e12c6dfbbb900ae3194cb56d798f06` |
+
 ## v1.0.0 미통과 gate
 
 실제 계정용 opt-in 실행 절차는 [live-validation.md](live-validation.md)에
