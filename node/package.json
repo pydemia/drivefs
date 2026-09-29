@@ -6,7 +6,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run build && node --test tests/test-conformance.mjs tests/test-gdrive.mjs",
+    "test": "npm run build && node --test tests/test-conformance.mjs tests/test-gdrive.mjs tests/test-microsoft.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint packages/*/src tests eslint.config.mjs",
     "format:check": "prettier --check packages/*/src tests eslint.config.mjs package.json packages/*/package.json packages/*/tsconfig.json"
