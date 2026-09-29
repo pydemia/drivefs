@@ -91,6 +91,21 @@ plugin은 `@pydemia/drivefs`만 요구한다.
 wheel hash는 각각의 빌드 실행 결과이며, wheel zip metadata 때문에
 다른 빌드에서 byte-for-byte 동일함을 주장하지 않는다.
 
+## 자동 OS 행렬 준비
+
+[`verify.yml`](../.github/workflows/verify.yml)은 Python 3.12·3.13·3.14와
+Node 24를 Linux x86_64, Windows x86_64, macOS x86_64/arm64에서 각각
+검사한다. 소스 검사와 fixture test 후 wheel·tarball을 만들고, core만
+설치한 환경, plugin별 환경, 전체 설치 환경에서 공개 API smoke를 실행한다.
+외부 의존성을 먼저 설치한 뒤 drivefs 배포물은 로컬 산출물에서 설치하며,
+provider credential이나 게시 권한은 workflow에 제공하지 않는다.
+
+검증 스크립트는 Windows Python 3.12·Node 24와 Linux 컨테이너 Python
+3.12~3.14·Node 24에서 **새로 빌드한** 배포물로 각각 exit 0을 확인했다.
+`actionlint`로 workflow 구문 검사도 통과했다. GitHub Actions 행렬은
+아직 실행 결과가 없으므로 macOS와 Windows Python 3.13·3.14 gate는
+여전히 미통과다.
+
 ## v1.0.0 미통과 gate
 
 | gate | 현재 증거 |
