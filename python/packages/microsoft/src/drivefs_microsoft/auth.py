@@ -25,6 +25,20 @@ class GraphCredentialStore(Protocol):
     def save(self, token: GraphToken) -> None: ...
 
 
+class GraphAccessTokenProvider(Protocol):
+    """Supply a token; raise AuthenticationError when login is required."""
+
+    tenant_id: str
+
+    def access_token(
+        self,
+        client: httpx.Client,
+        *,
+        force_refresh: bool = False,
+        failed_token: str | None = None,
+    ) -> str: ...
+
+
 class MemoryCredentialStore:
     def __init__(self, token: GraphToken | None = None) -> None:
         self._token = token

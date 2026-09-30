@@ -12,6 +12,15 @@ export interface GraphCredentialStore {
   save(token: GraphToken): void | Promise<void>;
 }
 
+export interface GraphAccessTokenProvider {
+  readonly tenant_id: string;
+  access_token(
+    fetcher: typeof fetch,
+    force_refresh?: boolean,
+    failed_token?: string,
+  ): string | Promise<string>;
+}
+
 export class MemoryCredentialStore implements GraphCredentialStore {
   #token: GraphToken | null;
 

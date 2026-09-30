@@ -41,7 +41,7 @@ from drivefs import (
     split_parent,
 )
 
-from .auth import GraphAuth
+from .auth import GraphAccessTokenProvider
 
 GRAPH_URL = "https://graph.microsoft.com/v1.0"
 CHUNK_SIZE = 10 * 320 * 1024
@@ -103,7 +103,7 @@ class _GraphStorage(FileStorage):
         *,
         drive_id: str,
         root_id: str,
-        auth: GraphAuth,
+        auth: GraphAccessTokenProvider,
         drive_type: str,
         site_id: str | None = None,
         client: httpx.Client | None = None,
@@ -918,7 +918,7 @@ class OneDriveStorage(_GraphStorage):
         *,
         drive_id: str,
         root_id: str,
-        auth: GraphAuth,
+        auth: GraphAccessTokenProvider,
         client: httpx.Client | None = None,
     ) -> None:
         if auth.tenant_id != "consumers":
@@ -943,7 +943,7 @@ class SharePointStorage(_GraphStorage):
         site_id: str,
         drive_id: str,
         root_id: str,
-        auth: GraphAuth,
+        auth: GraphAccessTokenProvider,
         client: httpx.Client | None = None,
     ) -> None:
         if not site_id or auth.tenant_id in ("consumers", "common"):

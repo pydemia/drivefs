@@ -522,6 +522,32 @@ test("Google HTTP errors and OAuth refresh", async () => {
   assert.equal(api.refreshCount, 2);
 });
 
+test("Google accepts an app-owned token provider", async () => {
+  const api = new GoogleApiFixture();
+  const calls = [];
+  let token = "test-token";
+  const auth = {
+    access_token: async (_fetcher, forceRefresh = false, failedToken) => {
+      calls.push([forceRefresh, failedToken]);
+      if (forceRefresh) token = "new-token";
+      return token;
+    },
+  };
+  const storage = new GoogleDriveStorage({
+    rootId: "root",
+    auth,
+    fetch: api.fetch.bind(api),
+  });
+  api.forcedStatus = 401;
+  assert.equal((await storage.stat("/")).kind, "directory");
+  assert.deepEqual(calls.slice(0, 2), [
+    [false, undefined],
+    [true, "test-token"],
+  ]);
+  assert.deepEqual(calls.slice(2), [[false, undefined]]);
+  assert.equal(api.refreshCount, 0);
+});
+
 test("Google refresh is serialized and save failures are safe", async () => {
   const { api, fetcher } = setup();
   const expired = {

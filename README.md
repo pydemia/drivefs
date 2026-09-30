@@ -9,7 +9,7 @@ Google Drive, OneDrive Personal, SharePoint document library를 애플리케이�
 
 현재 코드는 **0.1.0 구현 후보**입니다. Linux 컨테이너와 Linux·Windows·
 macOS CI 행렬에서 fixture·배포물 설치 검증을 통과했습니다. 실제
-provider 계정 검증과 게시 권한·라이선스 확정이 남아 있어 v1.0.0
+provider 계정 검증과 게시 권한 확인이 남아 있어 v1.0.0
 배포 기준은 아직 충족하지 않았습니다.
 
 ## 패키지와 의존성
@@ -42,14 +42,16 @@ const entry = await storage.write("/report.bin", new Uint8Array([1, 2, 3]));
 const payload = await storage.read(entry.ref);
 ```
 
-`google_auth`와 `googleAuth`는 각 provider package의 인증 class로
-생성하며, 초기 OAuth 동의와 credential 저장은 호출자가 담당합니다.
+`google_auth`와 `googleAuth`에는 provider package의 `GoogleAuth` 또는
+앱이 관리하는 OAuth token provider를 전달합니다. 초기 OAuth 동의와
+credential 저장은 호출자가 담당합니다.
 [설치·인증·사용 가이드](docs/usage.md)에 생성자 형태와 대용량 파일
-예제가 있습니다.
+예제가 있습니다. 앱에서 지속적으로 사용하려면 [앱 인증 설계](docs/app-auth.md)를
+참고하세요.
 
 ## 문서
 
 - [v1 기획서](docs/v1-plan.md) · [기획 review](docs/v1-review.md)
 - [FileStorage API 명세](spec/storage-api.md)
 - [구현계획](docs/implementation-plan.md) · [구현계획 review](docs/implementation-review.md)
-- [사용 가이드](docs/usage.md) · [검증 기록](docs/validation.md) · [실제 계정 검증](docs/live-validation.md) · [release notes](docs/release-notes.md)
+- [사용 가이드](docs/usage.md) · [앱 인증 설계](docs/app-auth.md) · [검증 기록](docs/validation.md) · [실제 계정 검증](docs/live-validation.md) · [release notes](docs/release-notes.md)

@@ -27,6 +27,10 @@ raises `AuthenticationError`. The in-memory store above does not persist
 credentials across processes. Construction does not open a browser or
 write credentials to a global file.
 
+An app can instead implement `GoogleAccessTokenProvider.access_token()` and
+pass it as `auth` to use its own OAuth SDK and token cache. See the
+[app authentication guide](../../../docs/app-auth.md).
+
 The root must be a folder in My Drive that the authorized application can
 access. `conditional_replace` is false until its provider behavior has
 been verified with a real account. Current tests use HTTP fixtures;

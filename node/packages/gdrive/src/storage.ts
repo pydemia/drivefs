@@ -30,7 +30,7 @@ import {
   type WriteOptions,
 } from "@pydemia/drivefs";
 
-import { GoogleAuth } from "./auth.js";
+import type { GoogleAccessTokenProvider } from "./auth.js";
 
 const API_URL = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
@@ -45,7 +45,7 @@ type Metadata = Record<string, unknown>;
 
 export interface GoogleDriveStorageOptions {
   rootId: string;
-  auth: GoogleAuth;
+  auth: GoogleAccessTokenProvider;
   /** Allows HTTP fixture injection without changing the public operations. */
   fetch?: typeof fetch;
   /** Total deadline for each HTTP request, including its response body. Default: 5 minutes. */
@@ -149,7 +149,7 @@ class ByteSource {
 
 export class GoogleDriveStorage extends FileStorage {
   readonly #rootId: string;
-  readonly #auth: GoogleAuth;
+  readonly #auth: GoogleAccessTokenProvider;
   readonly #fetch: typeof fetch;
   readonly #scope = new RefScope();
 

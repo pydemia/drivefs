@@ -41,7 +41,7 @@ from drivefs import (
     split_parent,
 )
 
-from .auth import GoogleAuth
+from .auth import GoogleAccessTokenProvider
 
 API_URL = "https://www.googleapis.com/drive/v3/files"
 UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
@@ -119,7 +119,7 @@ class GoogleDriveStorage(FileStorage):
         self,
         *,
         root_id: str,
-        auth: GoogleAuth,
+        auth: GoogleAccessTokenProvider,
         client: httpx.Client | None = None,
     ) -> None:
         if not root_id:

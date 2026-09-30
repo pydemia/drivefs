@@ -1,6 +1,7 @@
 """Google Drive provider for the drivefs FileStorage API."""
 
 from .auth import (
+    GoogleAccessTokenProvider,
     GoogleAuth,
     GoogleCredentialStore,
     GoogleToken,
@@ -9,6 +10,7 @@ from .auth import (
 from .storage import GoogleDriveStorage
 
 __all__ = [
+    "GoogleAccessTokenProvider",
     "GoogleAuth",
     "GoogleCredentialStore",
     "GoogleDriveStorage",

@@ -30,7 +30,7 @@ import {
   type WriteOptions,
 } from "@pydemia/drivefs";
 
-import { GraphAuth } from "./auth.js";
+import type { GraphAccessTokenProvider } from "./auth.js";
 
 const GRAPH_URL = "https://graph.microsoft.com/v1.0";
 const CHUNK_SIZE = 10 * 320 * 1024;
@@ -39,7 +39,7 @@ type Metadata = Record<string, unknown>;
 interface GraphStorageOptions {
   driveId: string;
   rootId: string;
-  auth: GraphAuth;
+  auth: GraphAccessTokenProvider;
   fetch?: typeof fetch;
   /** Total deadline for each HTTP request, including its response body. Default: 5 minutes. */
   timeoutMs?: number;
@@ -166,7 +166,7 @@ class ByteSource {
 class GraphStorage extends FileStorage {
   readonly #driveId: string;
   readonly #rootId: string;
-  readonly #auth: GraphAuth;
+  readonly #auth: GraphAccessTokenProvider;
   readonly #fetch: typeof fetch;
   readonly #driveType: "personal" | "documentLibrary";
   readonly #siteId: string | null;

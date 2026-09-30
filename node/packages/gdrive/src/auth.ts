@@ -14,6 +14,14 @@ export interface GoogleCredentialStore {
   save(token: GoogleToken): void | Promise<void>;
 }
 
+export interface GoogleAccessTokenProvider {
+  access_token(
+    fetcher: typeof fetch,
+    force_refresh?: boolean,
+    failed_token?: string,
+  ): string | Promise<string>;
+}
+
 export class MemoryCredentialStore implements GoogleCredentialStore {
   #token: GoogleToken | null;
 

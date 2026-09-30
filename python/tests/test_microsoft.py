@@ -476,6 +476,38 @@ class MicrosoftStorageTest(unittest.TestCase):
         finally:
             client.close()
 
+    def test_app_owned_token_provider_handles_unauthorized_response(self) -> None:
+        class AppAuth:
+            tenant_id = "consumers"
+
+            def __init__(self) -> None:
+                self.calls: list[tuple[bool, str | None]] = []
+                self.token = "test-token"
+
+            def access_token(
+                self,
+                client: httpx.Client,
+                *,
+                force_refresh: bool = False,
+                failed_token: str | None = None,
+            ) -> str:
+                self.calls.append((force_refresh, failed_token))
+                if force_refresh:
+                    self.token = "new-token"
+                return self.token
+
+        api = GraphApiFixture(drive_type="personal")
+        auth = AppAuth()
+        with httpx.Client(transport=httpx.MockTransport(api)) as client:
+            storage = OneDriveStorage(
+                drive_id="drive", root_id="root", auth=auth, client=client
+            )
+            api.forced_status = 401
+            self.assertEqual(storage.stat("/").kind, "directory")
+        self.assertEqual(auth.calls[:2], [(False, None), (True, "test-token")])
+        self.assertTrue(all(call == (False, None) for call in auth.calls[2:]))
+        self.assertEqual(api.refresh_count, 0)
+
     def test_upload_completion_uncertain(self) -> None:
         api, client, storage, _ = self._make("sharepoint")
         try:

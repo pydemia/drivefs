@@ -28,6 +28,18 @@ class GoogleCredentialStore(Protocol):
     def save(self, token: GoogleToken) -> None: ...
 
 
+class GoogleAccessTokenProvider(Protocol):
+    """Supply a token; raise AuthenticationError when login is required."""
+
+    def access_token(
+        self,
+        client: httpx.Client,
+        *,
+        force_refresh: bool = False,
+        failed_token: str | None = None,
+    ) -> str: ...
+
+
 class MemoryCredentialStore:
     """Explicit in-process store for tests and short-lived applications."""
 

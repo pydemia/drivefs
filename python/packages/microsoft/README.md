@@ -33,3 +33,7 @@ Memory storage loses credentials when the process exits. `conditional_replace`
 is false until real-account behavior is verified. Real-account integration
 remains a v1.0.0 release gate. See the [usage guide](../../../docs/usage.md)
 for scopes and streaming examples.
+
+MSAL does not expose refresh tokens. Apps using MSAL can implement
+`GraphAccessTokenProvider.access_token()` with MSAL's silent token acquisition
+and pass it as `auth`. See the [app authentication guide](../../../docs/app-auth.md).

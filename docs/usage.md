@@ -31,7 +31,10 @@ storage 인스턴스 안에서만 사용한다. 경로는 선택한 root 기준�
 ## 인증과 root 선택
 
 초기 OAuth 동의·토큰 발급은 호출 애플리케이션이 수행한다. provider
-package는 이미 발급된 delegated token을 받아 만료 시 갱신한다.
+package는 이미 발급된 delegated token을 받아 만료 시 갱신하거나,
+앱이 제공한 token provider에서 현재 토큰을 가져온다. 지속 실행 앱의
+로그인, 영속 cache, 갱신, 재인증 흐름은 [앱 인증 설계](app-auth.md)에
+정리했다. 아래 예시는 API 형태를 보여주기 위한 자리표시자다.
 `MemoryCredentialStore`는 예제·단기 실행용이며, 장기 실행에는
 `load`와 `save`를 구현한 영속 저장소가 필요하다. refresh token이
 회전하면 `save` 결과가 보존되어야 한다. 토큰·client secret은 로그,
@@ -88,7 +91,7 @@ sharepoint = SharePointStorage(
 )
 ```
 
-실제 토큰은 환경이나 caller credential store에서 받는다. 직접 만든
+실제 토큰은 앱의 OAuth 로그인과 영속 credential store에서 받는다. 직접 만든
 `httpx.Client`를 주입하지 않았다면 storage의 `close()` 또는 context
 manager로 연결을 정리한다.
 
@@ -129,9 +132,9 @@ const sharepoint = new SharePointStorage({
 });
 ```
 
-실제 실행 시 환경 값 부재를 먼저 검사하고, refresh token과 만료 시각도
-영속 store에 보관한다. 메모리 저장소는 프로세스를 다시 시작하면
-token을 잃는다.
+운영 앱에서는 이 환경 변수 예시 대신 사용자별 OAuth 연결과 영속
+store 또는 SDK token cache를 사용한다. 메모리 저장소는 프로세스를
+다시 시작하면 token을 잃는다.
 Node provider의 각 HTTP 요청은 응답 본문 읽기를 포함해 기본 5분
 deadline이 있다. 느린 대용량 전송에는 storage 생성자의 `timeoutMs`를
 양의 정수 밀리초로 늘린다.

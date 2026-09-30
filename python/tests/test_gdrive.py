@@ -447,6 +447,32 @@ class GoogleDriveStorageTest(unittest.TestCase):
         self.assertEqual(storage.stat("/").path, "/")
         self.assertEqual(self.api.refresh_count, 1)
 
+    def test_app_owned_token_provider_handles_unauthorized_response(self) -> None:
+        class AppAuth:
+            def __init__(self) -> None:
+                self.calls: list[tuple[bool, str | None]] = []
+                self.token = "test-token"
+
+            def access_token(
+                self,
+                client: httpx.Client,
+                *,
+                force_refresh: bool = False,
+                failed_token: str | None = None,
+            ) -> str:
+                self.calls.append((force_refresh, failed_token))
+                if force_refresh:
+                    self.token = "new-token"
+                return self.token
+
+        auth = AppAuth()
+        storage = GoogleDriveStorage(root_id="root", auth=auth, client=self.client)
+        self.api.forced_status = 401
+        self.assertEqual(storage.stat("/").kind, "directory")
+        self.assertEqual(auth.calls[:2], [(False, None), (True, "test-token")])
+        self.assertEqual(auth.calls[2:], [(False, None)])
+        self.assertEqual(self.api.refresh_count, 0)
+
     def test_concurrent_unauthorized_requests_refresh_once(self) -> None:
         barrier = Barrier(2)
         refresh_count = 0

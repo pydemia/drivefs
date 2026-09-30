@@ -33,6 +33,10 @@ before using it. A failed save raises `AuthenticationError`. The in-memory
 store above does not persist credentials across processes. Construction
 does not open a browser or write credentials to a global file.
 
+An app can instead implement `GoogleAccessTokenProvider.access_token()` and
+pass it as `auth` to use its own OAuth SDK and token cache. See the
+[app authentication guide](../../../docs/app-auth.md).
+
 Each HTTP request, including reading its response body, has a five-minute
 deadline by default. Set `timeoutMs` on `GoogleDriveStorage` when a large
 transfer needs a longer deadline. A stalled request raises a storage error.

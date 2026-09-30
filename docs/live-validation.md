@@ -1,6 +1,8 @@
 # 실제 계정 검증 실행
 
-이 검증은 opt-in이다. Google Drive, OneDrive Personal, SharePoint의
+이 검증은 opt-in이다. 이 문서의 수동 토큰 JSON은 테스트 입력이며
+지속 실행 앱의 인증 방식은 [앱 인증 설계](app-auth.md)를 따른다.
+Google Drive, OneDrive Personal, SharePoint의
 **각 계정과 언어별로** 실행해 결과를 기록한다. 실행 전 테스트 전용 root
 폴더를 하나 정하고, 해당 provider의 delegated OAuth access token과
 refresh token을 발급한다. Google root는 앱이 접근 가능한 My Drive

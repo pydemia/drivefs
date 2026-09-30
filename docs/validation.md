@@ -290,3 +290,13 @@ credential 없이 실행하면 쓰기 전에 종료된다. 아직 어떤 실제 
 
 따라서 이 기록은 구현 후보의 컨테이너 검증 증거이며 v1.0.0 배포
 승인이나 main merge 승인으로 해석하지 않는다.
+
+## 앱 소유 token provider 검증 (2026-09-30)
+
+Python 3.13에서 Ruff check/format, mypy strict 및 unittest 26개가
+통과했다. Node 24에서 ESLint, Prettier, TypeScript typecheck 및 테스트
+42개가 통과했다. Google과 Graph 양쪽의 새 fixture는 구체
+`GoogleAuth`/`GraphAuth` 없이 앱 소유 token provider를 주입하고,
+401 후 `failed_token`을 전달해 새 토큰으로 재시도하는 흐름을 확인한다.
+이번 검증은 OAuth SDK 자체와 실제 계정의 cache 지속성을 실행하지
+않았으므로 실제 계정 release gate는 그대로 남는다.

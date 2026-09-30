@@ -513,6 +513,34 @@ test("Graph error mapping, retry and refresh", async () => {
   );
 });
 
+test("Graph accepts an app-owned token provider", async () => {
+  const api = new GraphApiFixture("personal");
+  const calls = [];
+  let token = "test-token";
+  const auth = {
+    tenant_id: "consumers",
+    access_token: async (_fetcher, forceRefresh = false, failedToken) => {
+      calls.push([forceRefresh, failedToken]);
+      if (forceRefresh) token = "new-token";
+      return token;
+    },
+  };
+  const storage = new OneDriveStorage({
+    driveId: "drive",
+    rootId: "root",
+    auth,
+    fetch: api.fetch.bind(api),
+  });
+  api.forcedStatus = 401;
+  assert.equal((await storage.stat("/")).kind, "directory");
+  assert.deepEqual(calls.slice(0, 2), [
+    [false, undefined],
+    [true, "test-token"],
+  ]);
+  assert.ok(calls.slice(2).every(([forceRefresh]) => !forceRefresh));
+  assert.equal(api.refreshCount, 0);
+});
+
 test("Graph uncertain upload completion is recovered or reported", async () => {
   const { api, storage } = make("sharepoint");
   api.loseFinalResponse = true;

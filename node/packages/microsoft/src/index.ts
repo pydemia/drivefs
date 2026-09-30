@@ -2,6 +2,7 @@ export {
   GraphAuth,
   MemoryCredentialStore,
   type GraphCredentialStore,
+  type GraphAccessTokenProvider,
   type GraphToken,
   type GraphAuthOptions,
 } from "./auth.js";
