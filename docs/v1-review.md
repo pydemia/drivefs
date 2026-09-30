@@ -3,7 +3,7 @@
 검토일: 2026-09-30
 결론: [개발 기획서](v1-plan.md)와
 [FileStorage API 명세](../spec/storage-api.md)의 **설계 확정**.
-provider 구현과 실제 계정 검증은 아직 시작하지 않았으므로 배포 승인은
+provider 구현 후보는 준비됐고 실제 계정 검증은 미완료이므로 배포 승인은
 별도의 release gate를 통과한 뒤에 한다.
 
 ## 검토 기준
@@ -33,6 +33,7 @@ handoff의 목적을 기준으로 다음을 확인했다.
 | POSIX mount의 write/seek/cache는 별도 실패 모델이 필요함 | mount는 core 1.0의 공개 보장에서 제외 | handoff의 mount·write cache 위험 분석 |
 | object facade와 directory copy는 최소 lifecycle에 불필요함 | v1 공개 surface에서 제외 | handoff의 작은 API 원칙 및 [Google folder copy 제한](https://developers.google.com/workspace/drive/api/guides/create-file) |
 | 조건부 교체의 provider별 실제 지원 정도가 다를 수 있음 | 검증한 경우만 capability=true; 미지원 시 명시적 오류 | [Graph upload precondition](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0) |
+| 앱의 수동 token 주입은 장기 실행에 부적합하고 MSAL은 refresh token을 노출하지 않음 | 앱 소유 token provider 인터페이스를 허용. OAuth SDK와 영속 cache는 앱 계층에 배치 | [MSAL Node cache](https://learn.microsoft.com/en-us/entra/msal/javascript/node/caching), [Google offline access](https://developers.google.com/identity/protocols/oauth2/web-server) |
 
 provider API의 문서상 가능 여부만으로 지원을 확정하지 않았다.
 특히 Google 조건부 교체, `drive.file`로 접근 가능한 기존 폴더의
@@ -50,6 +51,15 @@ application의 `FileStorage` 타입 import는 core에서 가능하고,
 패키지 간 내부 버전 결합을 없앤다. provider를 모두 설치해야 하는
 상위 meta package나 자동 registry는 만들지 않는다. 첫 구현 PR부터
 package manifest와 import graph를 검사하여 역방향 의존을 막는다.
+
+2026-09-30 인증 경계 재검토에서 `GoogleAccessTokenProvider`와
+`GraphAccessTokenProvider`를 공개 계약으로 추가했다. 기존
+`GoogleAuth`/`GraphAuth`는 계속 이 계약을 구현한다. 앱은 자체 OAuth
+SDK와 계정별 cache를 사용해 access token을 공급할 수 있으며,
+provider와 core에는 MSAL 의존성이 추가되지 않는다. 401 후 한 번만
+강제 갱신하고 재시도하는 HTTP 동작은 기존 규칙을 유지한다. 다른
+프로세스 간 갱신 경쟁 및 재인증 UI는 앱 책임으로 [운영 인증 설계](app-auth.md)에
+명시했다.
 
 계획한 Python 배포물 네 개와 npm 배포물 세 개는 2026-09-30
 registry 조회에서 모두 404였다. 이것은 게시 권한이나 향후 점유를

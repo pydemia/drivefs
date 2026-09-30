@@ -27,6 +27,7 @@ handoff에서 확정된 요구는 세 provider, 두 언어, provider와 분리�
 | 영역 | v1.0.0 결정 |
 | --- | --- |
 | 언어 | Python 3.12~3.14, Node.js 24 LTS |
+| 배포 목표 OS | Linux x86_64, Windows x86_64, macOS x86_64/arm64 |
 | provider | Google My Drive의 지정 폴더, OneDrive Personal의 지정 root, SharePoint의 지정 document library |
 | 파일 | 일반 바이너리 파일, 실제 디렉터리, ref 기반 식별 |
 | 연산 | stat, exists, list, read, open_reader, read_range, write, mkdir, move, delete |
@@ -46,10 +47,12 @@ S3 호환 API, object facade, CLI, mount는 v1.0.0 범위 밖이다.
 ## 레이어와 의존 방향
 
 ```text
-Application
+Application ─────→ OAuth SDK / 계정별 credential 저장소 (앱의 선택)
+   │  token provider       │
+   │◀──────────────────────┘
    │  FileStorage API
    ▼
-Python/Node provider plugin ─────→ 해당 OAuth·HTTP/API 의존성
+Python/Node provider plugin ─────→ provider HTTP/API 의존성
    │
    └──────────────────────────────→ 각 언어의 core
                                       ▲
@@ -60,8 +63,9 @@ spec/ + conformance/ ──→ 각 언어 구현의 검증 기준
 
 이 그림의 화살표는 코드 의존 방향이다. application은 선택한 provider
 class를 생성한 뒤 core의 `FileStorage` 인터페이스로 취급한다.
-provider plugin은 인증, token refresh 연동, API 호출, 경로 탐색,
-pagination, 전송, retry, 오류 변환을 소유한다. core는 자료형,
+provider plugin은 token provider 호출, 기존 credential store 방식의
+token refresh, API 호출, 경로 탐색, pagination, 전송, retry, 오류
+변환을 소유한다. core는 자료형,
 경로 규칙, 오류와 공개 인터페이스만 소유한다. core는 provider SDK,
 HTTP client, OAuth library, fsspec, FUSE에 의존하지 않는다.
 fsspec adapter는 core만 의존하며 provider를 import하지 않는다.
@@ -90,9 +94,9 @@ v1.0 출시 시 `drivefs>=1.0,<2`, Node provider는
 사용하는 plugin release는 검증한 최소 core 버전을 올린다.
 `drivefs-fsspec`은 `drivefs`와 `fsspec`에만 의존한다. 개발 환경은
 각 언어의 lockfile로 재현하고, 배포물은
-직접 의존성에 호환 범위를 기록한다. 인증 라이브러리와 HTTP client의
-선택·버전은 provider 구현을 시작할 때 공식 지원 범위와 실제
-전송 요구를 비교해 각 plugin 안에서 결정한다. 사용하지 않는
+직접 의존성에 호환 범위를 기록한다. OAuth SDK는 앱이 선택하고
+provider plugin의 필수 의존성으로 추가하지 않는다. provider의 HTTP
+client는 각 plugin 안에서 결정한다. 사용하지 않는
 provider의 의존성은 설치되지 않아야 한다. PyPI 이름과 npm scope의
 게시 권한은 첫 배포 전에 확인한다.
 
@@ -126,10 +130,11 @@ const payload = await storage.read(entry.ref);
 ```
 
 위 코드는 목표 API 형태다. `auth`는 plugin이 정의하는 credential
-source이며 core 형식이 아니다. caller가 credential 저장 위치와
-지속성을 선택하고, plugin이 토큰 획득 및 갱신을 수행한다. 기본
+source이며 core 형식이 아니다. caller가 OAuth 로그인, credential
+저장 위치와 지속성을 선택한다. plugin은 token provider에서 현재 토큰을
+받고, 자체 credential store 방식을 쓸 때는 갱신도 수행한다. 기본
 생성자는 브라우저를 열거나 global 파일에 secret을 기록하지 않는다.
-interactive OAuth를 돕는 예제는 provider package에 둔다.
+지속 실행 앱의 연결 방식은 [앱 인증 설계](app-auth.md)를 따른다.
 
 ## provider별 설정과 확인 사항
 
@@ -168,9 +173,10 @@ cache를 넣지 않는다. 경로 조회 비용이 실제 병목으로 확인되
 
 ## 인증, 실패, 보안
 
-OAuth 토큰과 refresh token의 영속 저장은 caller가 결정한다.
-plugin은 토큰 refresh를 연동하고 실패를 `AuthenticationError`로
-바꾼다. 로그와 공통 예외에 access token, refresh token,
+OAuth 토큰 또는 SDK cache의 영속 저장은 caller가 결정한다.
+plugin의 기본 `GoogleAuth`/`GraphAuth`는 refresh와 저장을 연동한다.
+앱 소유 token provider는 실패를 `AuthenticationError`로 변환한다.
+로그와 공통 예외에 access token, refresh token,
 client secret, `Authorization` header, Graph의 서명된 임시
 다운로드 URL을 넣지 않는다. HTTP timeout과 bounded retry를
 provider별로 설정하고 `Retry-After`를 존중한다. 결과가 불확실한
@@ -190,12 +196,13 @@ provider별로 설정하고 `Retry-After`를 존중한다. 결과가 불확실�
 | 단계 | 산출물 | 다음 단계로 가는 조건 |
 | --- | --- | --- |
 | A. 명세·core | 이 문서, API 명세, 양 언어 core, fake backend, 공통 JSON case | 동일 경로·오류·쓰기 규칙을 fake에서 통과 |
-| B. Google | 양 언어 Google plugin과 OAuth 예제 | 실제 계정에서 lifecycle, 중복 이름, 대용량 전송 확인 |
-| C. Microsoft | 양 언어 OneDrive·SharePoint class와 Graph 내부 모듈 | 두 종류 계정에서 같은 conformance와 권한·충돌 동작 확인 |
+| B. Google | 양 언어 Google plugin과 OAuth 예제 | fixture와 공통 conformance 통과; 실제 계정 결과는 release gate로 누적 |
+| C. Microsoft | 양 언어 OneDrive·SharePoint class와 Graph 내부 모듈 | 두 종류 fixture와 conformance 통과; 실제 계정 결과는 release gate로 누적 |
 | D. fsspec·안정화 | Python adapter, API 문서, 설치 예제, release candidate | adapter 파일 작업, 배포물 설치, 전체 release gate 통과 |
 
-단계 B와 C의 실제 계정 검증이 불가능하면 해당 provider를 지원
-목록에 넣은 1.0을 배포하지 않는다. 확인되지 않은 capability를
+단계 B와 C의 실제 계정 검증이 불가능해도 다음 구현 단계는 진행한다.
+다만 해당 provider를 지원 목록에 넣은 1.0을 배포하지 않는다.
+확인되지 않은 capability를
 참으로 표시하거나 integration test를 조용히 skip하지 않는다.
 
 ## v1.0.0 배포 기준

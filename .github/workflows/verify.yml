@@ -1,0 +1,77 @@
+name: Verify packages
+
+on:
+  push:
+    branches: [main, codex/implement-v1]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
+        python: ['3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install source and checks
+        run: python -m pip install -e python/packages/core -e python/packages/gdrive -e python/packages/microsoft -e python/packages/fsspec ruff mypy
+      - name: Ruff
+        run: ruff check --no-cache --select E,F,I,B,UP python/packages python/tests validation/verify_python_artifacts.py validation/python_package_smoke.py validation/live_python.py
+      - name: Python format
+        run: ruff format --check python/packages python/tests validation/verify_python_artifacts.py validation/python_package_smoke.py validation/live_python.py
+      - name: Type check
+        run: mypy --strict python/packages/core/src python/packages/gdrive/src python/packages/microsoft/src python/packages/fsspec/src
+      - name: Unit and fixture tests
+        run: python -m unittest discover -s python/tests -q
+      - name: Build wheels and install in fresh environments
+        run: python validation/verify_python_artifacts.py --build .artifacts/ci-python
+
+  node:
+    name: Node 24 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
+    defaults:
+      run:
+        working-directory: node
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint and format
+        run: npm run lint && npm run format:check
+      - name: Build and type check
+        run: npm run build && npm run typecheck
+      - name: Unit and fixture tests
+        run: npm test
+      - name: Check artifact verifier
+        run: npx prettier --check ../validation/verify_node_artifacts.mjs ../validation/node_package_smoke.mjs
+      - name: Prepare tarball directory
+        run: >-
+          node -e "require('node:fs').mkdirSync('../.artifacts/ci-node', {recursive: true})"
+      - name: Pack workspaces
+        run: npm pack --workspaces --pack-destination ../.artifacts/ci-node
+      - name: Install tarballs in fresh environments
+        run: node ../validation/verify_node_artifacts.mjs ../.artifacts/ci-node
