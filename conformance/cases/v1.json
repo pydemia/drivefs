@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "path": [
+    {"id": "path-relative", "input": "a/b", "expect": "/a/b"},
+    {"id": "path-collapse", "input": "/a//./b/", "expect": "/a/b"},
+    {"id": "path-root", "input": "///./", "expect": "/"},
+    {"id": "path-case-unicode", "input": "Ä/ä", "expect": "/Ä/ä"},
+    {"id": "path-empty", "input": "", "error": "InvalidPathError"},
+    {"id": "path-parent", "input": "a/../b", "error": "InvalidPathError"},
+    {"id": "path-backslash", "input": "a\\b", "error": "InvalidPathError"},
+    {"id": "path-nul", "input": "a\u0000b", "error": "InvalidPathError"}
+  ],
+  "storage": [
+    {
+      "id": "lifecycle-and-ref",
+      "steps": [
+        {"op": "mkdir", "path": "/reports", "expect": {"kind": "directory", "path": "/reports"}},
+        {"op": "write", "path": "/reports/a.bin", "data": "", "save": "file", "expect": {"kind": "file", "size": 0}},
+        {"op": "read", "ref": "file", "expect": {"bytes": ""}},
+        {"op": "write", "path": "/reports/a.bin", "data": "abcdef", "overwrite": true, "expect": {"size": 6, "version": "2"}},
+        {"op": "read_range", "ref": "file", "offset": 2, "length": 3, "expect": {"bytes": "cde"}},
+        {"op": "move", "ref": "file", "destination": "/reports/b.bin", "expect": {"path": "/reports/b.bin"}},
+        {"op": "stat", "ref": "file", "expect": {"path": "/reports/b.bin"}},
+        {"op": "exists", "path": "/reports/a.bin", "expect": {"exists": false}},
+        {"op": "list", "path": "/reports", "expect": {"count": 1}},
+        {"op": "delete", "ref": "file"},
+        {"op": "exists", "path": "/reports/b.bin", "expect": {"exists": false}},
+        {"op": "mkdir", "path": "/reports", "error": "AlreadyExistsError"},
+        {"op": "delete", "path": "/reports"}
+      ]
+    },
+    {
+      "id": "duplicate-siblings",
+      "steps": [
+        {"op": "inject", "path": "/same", "data": "one", "save": "first"},
+        {"op": "inject", "path": "/same", "data": "two", "save": "second"},
+        {"op": "list", "path": "/", "expect": {"count": 2}},
+        {"op": "stat", "path": "/same", "error": "AmbiguousPathError"},
+        {"op": "read", "ref": "second", "expect": {"bytes": "two"}}
+      ]
+    },
+    {
+      "id": "outside-root-ref",
+      "steps": [
+        {"op": "inject", "path": "/item", "save": "outside"},
+        {"op": "detach", "ref": "outside"},
+        {"op": "stat", "ref": "outside", "error": "NotFoundError"}
+      ]
+    },
+    {
+      "id": "foreign-instance-ref",
+      "steps": [
+        {"op": "inject_foreign", "path": "/item", "save": "foreign"},
+        {"op": "stat", "ref": "foreign", "error": "NotFoundError"}
+      ]
+    },
+    {
+      "id": "root-and-kinds",
+      "steps": [
+        {"op": "delete", "path": "/", "error": "UnsupportedOperationError"},
+        {"op": "move", "path": "/", "destination": "/else", "error": "UnsupportedOperationError"},
+        {"op": "inject", "path": "/native", "kind": "other", "save": "native", "expect": {"kind": "other"}},
+        {"op": "read", "ref": "native", "error": "UnsupportedOperationError"},
+        {"op": "move", "ref": "native", "destination": "/new", "error": "UnsupportedOperationError"},
+        {"op": "delete", "ref": "native", "error": "UnsupportedOperationError"},
+        {"op": "read", "path": "/", "error": "IsDirectoryError"},
+        {"op": "list", "path": "/native", "error": "NotDirectoryError"}
+      ]
+    },
+    {
+      "id": "stream-size-and-version",
+      "steps": [
+        {"op": "write", "path": "/stream", "data": "abc", "stream": true, "error": "InvalidUploadSourceError"},
+        {"op": "write", "path": "/stream", "data": "abc", "stream": true, "size": 2, "error": "InvalidUploadSourceError"},
+        {"op": "write", "path": "/stream", "data": "abc", "stream": true, "size": 3, "expect": {"size": 3, "version": "1"}},
+        {"op": "write", "path": "/stream", "data": "new", "overwrite": true, "expected_version": "0", "error": "ConflictError"},
+        {"op": "write", "path": "/stream", "data": "new", "overwrite": true, "expected_version": "1", "expect": {"version": "2"}},
+        {"op": "read", "path": "/stream", "expect": {"bytes": "new"}},
+        {"op": "write", "path": "/stream", "data": "bad", "expected_version": "2", "error": "InvalidArgumentError"}
+      ]
+    },
+    {
+      "id": "nonempty-and-missing-parent",
+      "steps": [
+        {"op": "mkdir", "path": "/missing/child", "error": "NotFoundError"},
+        {"op": "mkdir", "path": "/dir"},
+        {"op": "write", "path": "/dir/file", "data": "x"},
+        {"op": "delete", "path": "/dir", "error": "DirectoryNotEmptyError"},
+        {"op": "move", "path": "/dir", "destination": "/dir/sub", "error": "InvalidPathError"}
+      ]
+    },
+    {
+      "id": "large-stream-and-range",
+      "steps": [
+        {"op": "write", "path": "/large", "data": "x", "repeat": 4194321, "stream": true, "size": 4194321, "expect": {"size": 4194321}},
+        {"op": "open_reader", "path": "/large", "expect": {"count": 4194321}},
+        {"op": "read_range", "path": "/large", "offset": 4194319, "length": 8, "expect": {"bytes": "xx"}},
+        {"op": "delete", "path": "/large"},
+        {"op": "exists", "path": "/large", "expect": {"exists": false}}
+      ]
+    },
+    {
+      "id": "range-and-reader",
+      "steps": [
+        {"op": "write", "path": "/data", "data": "abcdef"},
+        {"op": "read_range", "path": "/data", "offset": 99, "length": 3, "expect": {"bytes": ""}},
+        {"op": "read_range", "path": "/data", "offset": 2, "length": 0, "expect": {"bytes": ""}},
+        {"op": "read_range", "path": "/data", "offset": -1, "length": 2, "error": "InvalidArgumentError"},
+        {"op": "open_reader", "path": "/data", "expect": {"bytes": "abcdef"}},
+        {"op": "open_reader_break", "path": "/data", "expect": {"closed": true}}
+      ]
+    },
+    {
+      "id": "exists-error-propagation",
+      "steps": [
+        {"op": "fail_stat", "error_type": "PermissionDeniedError"},
+        {"op": "exists", "path": "/missing", "error": "PermissionDeniedError"},
+        {"op": "exists", "path": "/missing", "expect": {"exists": false}}
+      ]
+    },
+    {
+      "id": "pagination-error",
+      "steps": [
+        {"op": "inject", "path": "/1"},
+        {"op": "inject", "path": "/2"},
+        {"op": "inject", "path": "/3"},
+        {"op": "list", "path": "/", "expect": {"count": 3}},
+        {"op": "fail_list_after_page", "error_type": "ProviderUnavailableError"},
+        {"op": "list", "path": "/", "error": "ProviderUnavailableError"}
+      ]
+    }
+  ]
+}

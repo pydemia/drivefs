@@ -13,6 +13,10 @@ Google Drive는 My Drive의 특정 folder ID, OneDrive Personal은 선택한
 drive의 root item ID, SharePoint는 선택한 document library의 root item
 ID를 사용한다. 경로 `/`는 그 root를 뜻하며, root 밖 이동은 지원하지
 않는다. 서로 다른 storage 인스턴스 사이의 이동도 지원하지 않는다.
+ref 기반 연산도 항목의 현재 parent를 확인한다. root 밖으로 이동한
+항목임을 확인하면 `NotFoundError`를 낸다. 권한이나 네트워크 오류로
+현재 위치를 확인할 수 없으면 그 오류를 전파한다. 위치 확인과 변경
+요청 사이의 외부 이동까지 원자적으로 막는다고 보장하지 않는다.
 
 공개 경로는 `/`로 구분하는 root 상대 경로다. `a/b`, `/a/b`,
 `/a//./b/`는 모두 `/a/b`가 된다. 빈 문자열, `..`, 역슬래시,
@@ -69,7 +73,7 @@ provider의 조건부 요청으로 시행하고, 버전 불일치를 `ConflictEr
 | `read(path_or_ref)` | 전체 바이너리 내용을 메모리에 반환 |
 | `open_reader(path_or_ref)` | 순차 읽기 스트림 반환 |
 | `read_range(path_or_ref, offset, length)` | 지정 범위의 바이트 반환 |
-| `write(path, data, overwrite=false, expected_version=null)` | 파일 생성 또는 명시적 교체 후 `StorageEntry` 반환 |
+| `write(path, data, overwrite=false, expected_version=null, size=null)` | 파일 생성 또는 명시적 교체 후 `StorageEntry` 반환 |
 | `mkdir(path)` | parent가 있는 새 디렉터리 생성 후 `StorageEntry` 반환 |
 | `move(path_or_ref, destination)` | 같은 root 안에서 이름/parent 변경 후 `StorageEntry` 반환 |
 | `delete(path_or_ref)` | 파일 또는 빈 디렉터리를 휴지통으로 이동 |
@@ -83,6 +87,7 @@ provider의 조건부 요청으로 시행하고, 버전 불일치를 `ConflictEr
 큰 파일은 `open_reader`나 `read_range`를 사용한다.
 `read_range`의 `offset`과 `length`는 0 이상의 정수다. `length=0`은
 빈 바이트를 반환하고 EOF를 넘는 범위는 가능한 바이트만 반환한다.
+유효하지 않은 숫자 인자는 `InvalidArgumentError`다.
 provider가 전체 응답을 보낸 경우 구현은 범위 응답을 검증하고,
 의도치 않은 전체 파일 적재 없이 처리하거나 오류를 낸다.
 별도 범위 요청들 사이에 remote 파일이 바뀌지 않는 snapshot 보장은
@@ -100,10 +105,17 @@ provider가 전체 응답을 보낸 경우 구현은 범위 응답을 검증하�
 않는다. 생성 후 중복을 발견하면 `ConflictError`로 알리고 조정에
 필요한 ID를 오류 정보에 담는다.
 
-`write`는 bytes와 스트리밍 source를 받을 수 있다. 재시도 가능한
-source와 불가능한 source를 구분한다. 실패 후 성공 여부를 확인할 수
-없고 안전한 재시도 방법도 없으면 `IndeterminateOperationError`를 낸다.
+`write`는 bytes와 스트리밍 source를 받을 수 있다. bytes/`Uint8Array`는
+길이를 자동으로 얻는다. Python binary reader와 Node `AsyncIterable`에는
+전체 바이트 길이 `size`를 반드시 전달한다. 길이 미상 source는 원격
+요청 전에 `InvalidUploadSourceError`로 거부한다. 전송한 길이가
+`size`와 다르면 session을 가능한 한 취소하고 같은 오류를 낸다.
+plugin은 재시도할 fragment만 제한된 크기로 보관하며 stream 전체를
+메모리에 적재하지 않는다. 실패 후 성공 여부를 확인할 수 없고 안전한
+재시도 방법도 없으면 `IndeterminateOperationError`를 낸다.
 성공을 가정하거나 동일 이름으로 무조건 다시 생성하지 않는다.
+`overwrite=false`와 `expected_version`을 함께 주면
+`InvalidArgumentError`다.
 
 `mkdir`는 중간 디렉터리를 만들지 않는다. 대상이 이미 있으면
 종류와 관계없이 `AlreadyExistsError`다. `move`의 destination parent도
@@ -122,11 +134,15 @@ source와 불가능한 source를 구분한다. 실패 후 성공 여부를 확�
 
 Python 공개 API는 동기식이다. `read`는 `bytes`, `open_reader`는
 context manager로 닫을 수 있는 binary reader를 반환한다. `write`는
-`bytes` 또는 binary reader를 받는다. Node 공개 API는 비동기식이다.
+`bytes` 또는 binary reader를 받는다. 미소비 reader도 context 종료 시
+HTTP 응답을 닫는다. Node 공개 API는 비동기식이다.
 `read`는 `Promise<Uint8Array>`, `open_reader`는
 `AsyncIterable<Uint8Array>`, `write`는 `Uint8Array` 또는
 `AsyncIterable<Uint8Array>`를 받는다. Node stream 변환은 Node core의
 얇은 편의 함수로 둘 수 있으나 저장소 의미는 바꾸지 않는다.
+Node reader는 순회가 끝나거나 `return()`으로 조기 종료되면 HTTP
+응답을 닫는다. `open_reader`는 선택적 `AbortSignal`을 받아 명시적
+취소도 지원한다.
 
 두 언어는 같은 메서드 이름, 기본값, 오류 의미를 유지한다.
 Python의 동기 호출을 mount의 비동기 이벤트 루프에서 직접 실행하지
@@ -142,6 +158,8 @@ Python의 동기 호출을 mount의 비동기 이벤트 루프에서 직접 실�
 | `AlreadyExistsError` | 생성/이동 대상 이름이 이미 있음 |
 | `AmbiguousPathError` | 한 경로에 여러 항목이 대응됨 |
 | `InvalidPathError` | 공통 또는 provider 이름 규칙 위반 |
+| `InvalidArgumentError` | 유효하지 않은 옵션 조합 또는 숫자 인자 |
+| `InvalidUploadSourceError` | 크기 누락·불일치 등 업로드 입력 오류 |
 | `NotDirectoryError`, `IsDirectoryError` | 기대한 항목 종류가 다름 |
 | `DirectoryNotEmptyError` | 비어 있지 않은 디렉터리 삭제 시도 |
 | `AuthenticationError` | 토큰 부재·만료·갱신 실패 |
