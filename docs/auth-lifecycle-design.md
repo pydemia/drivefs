@@ -27,6 +27,48 @@ OAuth SDK에 의존하며, provider의 HTTP/API 코드가 인증 모듈에 역�
 구성해 사용하지 않는 서비스의 SDK를 설치하지 않는다. Python/Node의
 정확한 배포물 이름과 SDK 라이선스는 게시 전에 검증한다.
 
+## 최초 설정과 첫 로그인
+
+최초 설정은 **앱 개발자의 OAuth client 등록**과 **사용자의 계정 연결**로
+나뉜다. 사용자의 비밀번호나 미리 발급한 access token을 앱 설정에
+입력받지 않는다.
+
+| 대상 | 앱 개발자가 한 번 설정하는 값 | 첫 사용자 연결 |
+| --- | --- | --- |
+| Google Drive | Drive API 활성화, OAuth 동의 화면, Desktop 또는 Web OAuth client ID, 필요한 Drive scope. Web은 redirect URI도 등록 | 사용자가 Google 계정을 선택하고 동의. `offline` access로 갱신 가능한 credential을 받음 |
+| OneDrive Personal | 개인 계정을 허용하는 Entra 앱 등록, client ID, 플랫폼별 redirect URI, delegated `Files.ReadWrite`와 `offline_access` | 사용자가 개인 Microsoft 계정으로 로그인·동의. MSAL이 계정과 token cache를 보관 |
+| SharePoint | 접근 가능한 회사·학교 tenant의 앱 등록, redirect URI, 해당 site/library에 필요한 delegated 권한 | 조직 계정의 사용자 또는 관리자 동의. tenant·site·drive ID를 연결 |
+
+데스크톱 client는 public client다. 시스템 브라우저와 loopback callback,
+PKCE를 사용하고 client secret의 기밀성에 의존하지 않는다.
+서버 웹 앱은 등록된 HTTPS callback으로 code를 받고 confidential client
+credential은 서버에만 보관한다. Google의 `drive.file` scope는 앱이 만든
+파일 또는 사용자가 Picker 등으로 앱에 제공한 파일에 접근한다. 기존
+임의 폴더 ID만 저장해서는 접근 권한이 생기지 않는다.
+OneDrive Personal의 authority는 `consumers`이고 SharePoint는 해당
+회사·학교 tenant를 사용한다.
+
+첫 연결의 패키지 흐름은 다음과 같다.
+
+1. 인증 모듈이 선택 계정의 cache를 찾는다. 없으면 무작위 `state`와
+   PKCE verifier를 만들고 authorization URL을 생성한다.
+2. 데스크톱은 시스템 브라우저를 열고 임시 loopback 서버로 callback을
+   받는다. 웹은 앱이 사용자를 로그인 URL로 redirect하고 등록된 callback
+   route에서 응답을 전달한다.
+3. 인증 모듈이 `state`와 callback을 검증하고 code를 교환한다. Google은
+   access/refresh token을 보안 저장소에 기록한다. Microsoft는 MSAL의
+   계정별 cache를 영속화한다. 코드와 token을 로그에 남기지 않는다.
+4. 연결된 사용자에게 사용할 root를 선택하게 한다. Google은 앱이 전용
+   폴더를 만들거나 Picker로 제공된 폴더를 사용한다. OneDrive는
+   `GET /me/drive`의 drive ID와 선택한 folder ID를 저장한다.
+   SharePoint는 별도 조직 tenant/site/document library의 ID가 필요하다.
+5. 선택한 `root_id`와 인증 session으로 storage를 생성한다. 다음 실행부터
+   cache 복원과 silent refresh를 먼저 시도한다.
+
+Google OAuth 동의 화면이 External + Testing이고 Drive scope를 요청하면
+테스트 사용자의 refresh token은 7일 후 만료될 수 있다. 이는 첫 연결
+검증에는 사용할 수 있지만 장기 운영을 검증하는 설정은 아니다.
+
 ## 사용 흐름
 
 ### 데스크톱·대화형 CLI
@@ -98,7 +140,10 @@ MSAL은 refresh token을 응용 코드에 노출하지 않으므로 MSAL cache �
 
 - [Google 설치형 앱의 PKCE와 refresh](https://developers.google.com/identity/protocols/oauth2/native-app)
 - [Google 웹 서버의 offline access](https://developers.google.com/identity/protocols/oauth2/web-server)
+- [Google Drive `drive.file` scope](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
 - [Google token 만료·철회 대비](https://developers.google.com/identity/protocols/oauth2/resources/best-practices)
+- [Microsoft 앱 등록과 계정 유형](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app)
+- [Microsoft desktop 앱 redirect 설정](https://learn.microsoft.com/en-us/entra/identity-platform/scenario-desktop-app-configuration)
 - [MSAL Python의 silent·interactive 흐름](https://learn.microsoft.com/en-us/entra/msal/python/getting-started/acquiring-tokens)
 - [MSAL Node token acquisition](https://learn.microsoft.com/en-us/entra/msal/javascript/node/acquire-token-requests)
 - [MSAL Node cache 지속성](https://learn.microsoft.com/en-us/entra/msal/javascript/node/caching)
