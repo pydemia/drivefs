@@ -9,7 +9,7 @@ Google Drive, OneDrive Personal, SharePoint document library를 애플리케이�
 
 현재 코드는 **0.1.0 구현 후보**입니다. Linux 컨테이너와 Linux·Windows·
 macOS CI 행렬에서 fixture·배포물 설치 검증을 통과했습니다. 실제
-provider 계정 검증과 게시 권한 확인이 남아 있어 v1.0.0
+provider 계정 검증, 선택형 OAuth 연결 모듈, 게시 권한 확인이 남아 있어 v1.0.0
 배포 기준은 아직 충족하지 않았습니다.
 
 ## 패키지와 의존성
@@ -51,7 +51,7 @@ credential 저장은 호출자가 담당합니다.
 
 ## 문서
 
-- [v1 기획서](docs/v1-plan.md) · [기획 review](docs/v1-review.md)
+- [v1 기획서](docs/v1-plan.md) · [기획 review](docs/v1-review.md) · [OAuth lifecycle 목표 설계](docs/auth-lifecycle-design.md)
 - [FileStorage API 명세](spec/storage-api.md)
 - [구현계획](docs/implementation-plan.md) · [구현계획 review](docs/implementation-review.md)
 - [사용 가이드](docs/usage.md) · [앱 인증 설계](docs/app-auth.md) · [검증 기록](docs/validation.md) · [실제 계정 검증](docs/live-validation.md) · [release notes](docs/release-notes.md)

@@ -1,6 +1,6 @@
 # drivefs v1.0.0 개발 기획서
 
-상태: 설계 확정 · 2026-09-30
+상태: 설계 확정 · 2026-09-30, 인증 설계 보완 · 2026-10-20
 
 ## 목표와 완료 기준
 
@@ -31,7 +31,7 @@ handoff에서 확정된 요구는 세 provider, 두 언어, provider와 분리�
 | provider | Google My Drive의 지정 폴더, OneDrive Personal의 지정 root, SharePoint의 지정 document library |
 | 파일 | 일반 바이너리 파일, 실제 디렉터리, ref 기반 식별 |
 | 연산 | stat, exists, list, read, open_reader, read_range, write, mkdir, move, delete |
-| 인증 | 사용자 delegated OAuth와 caller가 소유한 credential 저장 방식 |
+| 인증 | delegated OAuth. 선택 설치하는 인증 모듈이 연결·자동 갱신을 처리하고, 앱이 계정·영속 저장소·사용자 상호작용 경로를 제공 |
 | Python 통합 | 별도 배포물 `drivefs-fsspec`의 읽기 전용 파일 연산 |
 | 검증 | 언어별 fake와 동일 conformance case, provider별 실제 계정 E2E |
 
@@ -47,16 +47,12 @@ S3 호환 API, object facade, CLI, mount는 v1.0.0 범위 밖이다.
 ## 레이어와 의존 방향
 
 ```text
-Application ─────→ OAuth SDK / 계정별 credential 저장소 (앱의 선택)
-   │  token provider       │
-   │◀──────────────────────┘
-   │  FileStorage API
-   ▼
-Python/Node provider plugin ─────→ provider HTTP/API 의존성
-   │
-   └──────────────────────────────→ 각 언어의 core
-                                      ▲
-Python fsspec adapter ────────────────┘
+Application ─────→ Python/Node provider plugin ──→ 각 언어의 core
+   │                         ▲                            ▲
+   └──→ 선택적 OAuth 연결 모듈 ┘                            │
+               │                                         │
+               └──→ OAuth SDK / 계정별 cache              │
+Python fsspec adapter ─────────────────────────────────────┘
 
 spec/ + conformance/ ──→ 각 언어 구현의 검증 기준
 ```
@@ -94,8 +90,8 @@ v1.0 출시 시 `drivefs>=1.0,<2`, Node provider는
 사용하는 plugin release는 검증한 최소 core 버전을 올린다.
 `drivefs-fsspec`은 `drivefs`와 `fsspec`에만 의존한다. 개발 환경은
 각 언어의 lockfile로 재현하고, 배포물은
-직접 의존성에 호환 범위를 기록한다. OAuth SDK는 앱이 선택하고
-provider plugin의 필수 의존성으로 추가하지 않는다. provider의 HTTP
+직접 의존성에 호환 범위를 기록한다. OAuth SDK는 선택적 인증 모듈에
+한정하고 provider plugin의 필수 의존성으로 추가하지 않는다. provider의 HTTP
 client는 각 plugin 안에서 결정한다. 사용하지 않는
 provider의 의존성은 설치되지 않아야 한다. PyPI 이름과 npm scope의
 게시 권한은 첫 배포 전에 확인한다.
@@ -129,12 +125,15 @@ const entry = await storage.write("/reports/result.bin", bytes);
 const payload = await storage.read(entry.ref);
 ```
 
-위 코드는 목표 API 형태다. `auth`는 plugin이 정의하는 credential
-source이며 core 형식이 아니다. caller가 OAuth 로그인, credential
-저장 위치와 지속성을 선택한다. plugin은 token provider에서 현재 토큰을
-받고, 자체 credential store 방식을 쓸 때는 갱신도 수행한다. 기본
+위 코드는 storage API 형태다. `auth`는 plugin이 정의하는 token provider이며
+core 형식이 아니다. 현재는 앱이 OAuth 로그인을 연결하거나 기존
+`GoogleAuth`/`GraphAuth`에 credential store를 제공한다. v1 목표는 선택적
+인증 모듈의 `connect()` 및 웹용 `begin_authorization`/
+`complete_authorization`으로 로그인 절차까지 패키지에서 처리하는 것이다.
+앱은 계정과 영속 저장소 및 사용자 상호작용 경로를 제공한다. 기본
 생성자는 브라우저를 열거나 global 파일에 secret을 기록하지 않는다.
-지속 실행 앱의 연결 방식은 [앱 인증 설계](app-auth.md)를 따른다.
+[인증 lifecycle 설계](auth-lifecycle-design.md)와
+[현재 앱 인증 가이드](app-auth.md)를 따른다.
 
 ## provider별 설정과 확인 사항
 
@@ -173,8 +172,10 @@ cache를 넣지 않는다. 경로 조회 비용이 실제 병목으로 확인되
 
 ## 인증, 실패, 보안
 
-OAuth 토큰 또는 SDK cache의 영속 저장은 caller가 결정한다.
+OAuth 토큰 또는 SDK cache의 저장 위치는 caller가 결정한다.
 plugin의 기본 `GoogleAuth`/`GraphAuth`는 refresh와 저장을 연동한다.
+선택적 인증 모듈은 최초 연결·cache 복원·silent refresh를 처리하고,
+사용자 참여가 필요하면 `InteractionRequiredError`를 반환한다.
 앱 소유 token provider는 실패를 `AuthenticationError`로 변환한다.
 로그와 공통 예외에 access token, refresh token,
 client secret, `Authorization` header, Graph의 서명된 임시
@@ -214,6 +215,8 @@ provider별로 설정하고 `Retry-After`를 존중한다. 결과가 불확실�
    `mkdir → write → stat → list → read → read_range → move → delete`
    흐름과 credential refresh를 각각 검증한다. test가 만든 항목의
    정리 실패도 결과로 보고한다.
+   선택적 인증 모듈의 최초 연결, 재시작 후 cache 복원, 자동 refresh와
+   재동의 필요 오류를 검증한다.
 3. HTTP fixture test가 401/403/404/409/412/429, 5xx, timeout,
    quota와 불확실한 업로드 완료 상태를 provider별로 검증한다.
    중복 이름과 native 문서 사례는 Google 실제 계정에서도 확인한다.

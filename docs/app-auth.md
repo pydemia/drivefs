@@ -1,5 +1,8 @@
 # 지속 실행 애플리케이션의 인증 설계
 
+이 문서는 **현재 구현**의 연결 방법이다. 패키지가 최초 OAuth 연결부터
+처리하는 v1 목표는 [인증 lifecycle 설계](auth-lifecycle-design.md)에 있다.
+
 `docs/live-validation.md`의 토큰 JSON 주입은 실제 계정 검증 절차다. 앱의
 운영 인증 방식으로 사용하지 않는다. 운영 앱은 사용자를 처음 연결할 때
 OAuth 로그인과 동의를 받고, 이후에는 저장된 credential 또는 OAuth SDK의
